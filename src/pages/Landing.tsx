@@ -1,308 +1,186 @@
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Activity, Heart, Brain, TrendingUp, ArrowRight, Zap, Shield, Users } from 'lucide-react';
+import { Activity, Heart, Brain, TrendingUp, ArrowRight, Zap, Shield, Users, Cpu, Dna } from 'lucide-react';
 
 const features = [
-  {
-    icon: Heart,
-    title: 'Health Monitoring',
-    description: 'Track your vital signs and health metrics in real-time with an intuitive dashboard'
-  },
-  {
-    icon: Brain,
-    title: 'AI Disease Detection',
-    description: 'Advanced symptom analysis powered by AI to help identify potential health conditions'
-  },
-  {
-    icon: TrendingUp,
-    title: 'Risk Assessment',
-    description: 'Comprehensive health risk scoring based on your medical history and lifestyle'
-  },
-  {
-    icon: Shield,
-    title: 'Privacy First',
-    description: 'Your health data is encrypted and secure. Only you can access your information'
-  },
-  {
-    icon: Zap,
-    title: 'Instant Insights',
-    description: 'Get personalized recommendations and actionable health insights instantly'
-  },
-  {
-    icon: Users,
-    title: 'Expert Guidance',
-    description: 'Access professional health insights tailored to your specific health profile'
-  }
+  { icon: Heart, title: 'Vitals Tracking', description: 'Real-time monitoring of your body\'s core metrics', color: '#ff2d55', xp: '+150 XP' },
+  { icon: Brain, title: 'AI Disease Scan', description: 'Neural symptom analysis powered by frontier AI', color: '#00d4ff', xp: '+300 XP' },
+  { icon: TrendingUp, title: 'Risk Assessment', description: 'Full-body health scoring with predictive analysis', color: '#7c3aed', xp: '+250 XP' },
+  { icon: Shield, title: 'Data Fortress', description: 'Military-grade encryption on all your health data', color: '#10b981', xp: '+100 XP' },
+  { icon: Zap, title: 'Instant Intel', description: 'Sub-second AI insights personalized to your profile', color: '#f59e0b', xp: '+200 XP' },
+  { icon: Users, title: 'Expert Network', description: 'Access curated medical intelligence at any time', color: '#ec4899', xp: '+180 XP' },
+];
+
+const stats = [
+  { value: '98.7%', label: 'Accuracy Rate', icon: Cpu },
+  { value: '< 2s', label: 'AI Response', icon: Zap },
+  { value: '256-bit', label: 'Encryption', icon: Shield },
 ];
 
 export default function Landing() {
   const navigate = useNavigate();
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-emerald-50 dark:from-gray-900 dark:via-blue-900/30 dark:to-emerald-900/30 overflow-hidden">
-      <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute top-0 left-1/4 w-96 h-96 bg-blue-300/20 rounded-full blur-3xl dark:bg-blue-600/10"></div>
-        <div className="absolute bottom-0 right-1/4 w-96 h-96 bg-emerald-300/20 rounded-full blur-3xl dark:bg-emerald-600/10"></div>
-      </div>
+    <div style={{ fontFamily: "'Rajdhani', 'Orbitron', sans-serif" }} className="min-h-screen bg-[#050810] text-white overflow-hidden">
+      <style>{`
+        @import url('https://fonts.googleapis.com/css2?family=Rajdhani:wght@300;400;500;600;700&family=Orbitron:wght@400;700;900&family=Share+Tech+Mono&display=swap');
+        .hex-border { clip-path: polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%); }
+        .scan-line { background: repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,212,255,0.03) 2px, rgba(0,212,255,0.03) 4px); }
+        .neon-text { text-shadow: 0 0 20px currentColor, 0 0 40px currentColor; }
+        .grid-bg { background-image: linear-gradient(rgba(0,212,255,0.05) 1px, transparent 1px), linear-gradient(90deg, rgba(0,212,255,0.05) 1px, transparent 1px); background-size: 60px 60px; }
+        .card-glow:hover { box-shadow: 0 0 30px rgba(0,212,255,0.15), inset 0 0 30px rgba(0,212,255,0.05); }
+        .xp-bar { background: linear-gradient(90deg, #00d4ff, #7c3aed); animation: pulse-xp 2s ease-in-out infinite; }
+        @keyframes pulse-xp { 0%, 100% { opacity: 1; } 50% { opacity: 0.7; } }
+        .glitch::before { content: attr(data-text); position: absolute; left: 2px; text-shadow: -2px 0 #ff2d55; clip: rect(24px, 550px, 90px, 0); animation: glitch 3s infinite linear; }
+        @keyframes glitch { 0% { clip: rect(42px, 9999px, 44px, 0); } 20% { clip: rect(12px, 9999px, 78px, 0); } 40% { clip: rect(62px, 9999px, 14px, 0); } 60% { clip: rect(28px, 9999px, 90px, 0); } 80% { clip: rect(8px, 9999px, 60px, 0); } 100% { clip: rect(42px, 9999px, 44px, 0); } }
+        .corner-bracket::before, .corner-bracket::after { content: ''; position: absolute; width: 12px; height: 12px; border-color: #00d4ff; border-style: solid; }
+        .corner-bracket::before { top: 0; left: 0; border-width: 2px 0 0 2px; }
+        .corner-bracket::after { bottom: 0; right: 0; border-width: 0 2px 2px 0; }
+      `}</style>
 
-      <nav className="relative z-10 bg-white/80 dark:bg-gray-900/80 backdrop-blur-xl border-b border-gray-200/50 dark:border-gray-800/50 sticky top-0">
+      {/* Ambient background */}
+      <div className="fixed inset-0 grid-bg scan-line pointer-events-none" />
+      <div className="fixed top-0 left-0 w-[600px] h-[600px] rounded-full pointer-events-none" style={{ background: 'radial-gradient(circle, rgba(0,212,255,0.06) 0%, transparent 70%)', transform: 'translate(-30%, -30%)' }} />
+      <div className="fixed bottom-0 right-0 w-[600px] h-[600px] rounded-full pointer-events-none" style={{ background: 'radial-gradient(circle, rgba(124,58,237,0.08) 0%, transparent 70%)', transform: 'translate(30%, 30%)' }} />
+
+      {/* NAV */}
+      <nav className="relative z-50 border-b border-[#00d4ff]/20 bg-[#050810]/80 backdrop-blur-xl sticky top-0">
         <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            className="flex items-center gap-2"
-          >
-            <div className="w-10 h-10 bg-gradient-to-br from-blue-600 to-emerald-600 rounded-lg flex items-center justify-center">
-              <Activity className="w-6 h-6 text-white" />
+          <motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} className="flex items-center gap-3">
+            <div className="w-10 h-10 hex-border bg-gradient-to-br from-[#00d4ff] to-[#7c3aed] flex items-center justify-center">
+              <Activity className="w-5 h-5 text-white" />
             </div>
-            <span className="font-bold text-xl text-gray-900 dark:text-white">MediIntel</span>
+            <div>
+              <span style={{ fontFamily: "'Orbitron', sans-serif" }} className="font-black text-lg tracking-widest text-white">MEDI<span className="text-[#00d4ff]">INTEL</span></span>
+              <div className="text-[10px] tracking-[0.3em] text-[#00d4ff]/60" style={{ fontFamily: "'Share Tech Mono', monospace" }}>HEALTH_OS v2.4.1</div>
+            </div>
           </motion.div>
 
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ delay: 0.2 }}
-            className="flex items-center gap-4"
-          >
-            <button
-              onClick={() => navigate('/login')}
-              className="px-6 py-2 text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white transition-colors"
-            >
-              Login
+          <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} className="flex items-center gap-3">
+            <button onClick={() => navigate('/login')} className="px-5 py-2 text-sm border border-[#00d4ff]/30 text-[#00d4ff] rounded hover:bg-[#00d4ff]/10 transition-all tracking-widest" style={{ fontFamily: "'Share Tech Mono', monospace" }}>
+              [LOGIN]
             </button>
-            <button
-              onClick={() => navigate('/signup')}
-              className="px-6 py-2 bg-gradient-to-r from-blue-600 to-emerald-600 text-white rounded-lg font-semibold hover:shadow-lg transition-all"
-            >
-              Sign Up
+            <button onClick={() => navigate('/signup')} className="px-5 py-2 text-sm bg-[#00d4ff] text-[#050810] font-bold rounded hover:bg-white transition-all tracking-widest" style={{ fontFamily: "'Share Tech Mono', monospace" }}>
+              [ENROLL]
             </button>
           </motion.div>
         </div>
       </nav>
 
-      <main className="relative z-10">
-        <div className="max-w-7xl mx-auto px-6 py-20 space-y-24">
-          <section className="space-y-12">
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.8 }}
-              className="text-center space-y-6"
-            >
-              <div className="inline-flex items-center gap-2 px-4 py-2 bg-blue-100 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-800 rounded-full">
-                <Zap className="w-4 h-4 text-blue-600 dark:text-blue-400" />
-                <span className="text-sm font-semibold text-blue-900 dark:text-blue-200">AI-Powered Healthcare</span>
-              </div>
-
-              <h1 className="text-6xl md:text-7xl font-bold text-gray-900 dark:text-white leading-tight">
-                Your Intelligent <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-emerald-600">Health Companion</span>
-              </h1>
-
-              <p className="text-xl text-gray-600 dark:text-gray-400 max-w-2xl mx-auto leading-relaxed">
-                Advanced AI-powered health monitoring, disease detection, and personalized risk assessment all in one platform. Take control of your health with intelligent insights.
-              </p>
-
-              <motion.div
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.3, duration: 0.6 }}
-                className="flex flex-col sm:flex-row gap-4 justify-center pt-6"
-              >
-                <motion.button
-                  whileHover={{ scale: 1.05 }}
-                  whileTap={{ scale: 0.95 }}
-                  onClick={() => navigate('/signup')}
-                  className="px-8 py-4 bg-gradient-to-r from-blue-600 to-emerald-600 text-white rounded-lg font-bold text-lg shadow-lg hover:shadow-xl transition-all flex items-center justify-center gap-2"
-                >
-                  Get Started <ArrowRight className="w-5 h-5" />
-                </motion.button>
-                <motion.button
-                  whileHover={{ scale: 1.05 }}
-                  whileTap={{ scale: 0.95 }}
-                  onClick={() => navigate('/login')}
-                  className="px-8 py-4 border-2 border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white rounded-lg font-bold text-lg hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-all"
-                >
-                  Sign In
-                </motion.button>
-              </motion.div>
-            </motion.div>
-
-            <motion.div
-              initial={{ opacity: 0, y: 40 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.5, duration: 0.8 }}
-              className="relative mt-20"
-            >
-              <div className="bg-gradient-to-br from-blue-50 to-emerald-50 dark:from-blue-900/20 dark:to-emerald-900/20 rounded-2xl border border-blue-200/50 dark:border-blue-800/30 p-8 shadow-xl">
-                <div className="grid grid-cols-3 gap-6">
-                  {[
-                    { value: '24/7', label: 'Health Monitoring' },
-                    { value: 'AI-Powered', label: 'Disease Detection' },
-                    { value: 'Secure', label: 'Data Protection' }
-                  ].map((stat, i) => (
-                    <div key={i} className="text-center">
-                      <div className="text-2xl font-bold text-blue-600 dark:text-blue-400">{stat.value}</div>
-                      <div className="text-sm text-gray-600 dark:text-gray-400 mt-1">{stat.label}</div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </motion.div>
-          </section>
-
-          <section className="space-y-16">
-            <motion.div
-              initial={{ opacity: 0 }}
-              whileInView={{ opacity: 1 }}
-              transition={{ duration: 0.8 }}
-              viewport={{ once: true }}
-              className="text-center space-y-4"
-            >
-              <h2 className="text-4xl md:text-5xl font-bold text-gray-900 dark:text-white">Powerful Features</h2>
-              <p className="text-gray-600 dark:text-gray-400 text-lg max-w-2xl mx-auto">Everything you need to monitor and improve your health</p>
-            </motion.div>
-
-            <div className="grid md:grid-cols-3 gap-8">
-              {features.map((feature, index) => (
-                <motion.div
-                  key={index}
-                  initial={{ opacity: 0, y: 20 }}
-                  whileInView={{ opacity: 1, y: 0 }}
-                  transition={{ delay: index * 0.1, duration: 0.6 }}
-                  viewport={{ once: true }}
-                  whileHover={{ translateY: -5 }}
-                  className="bg-white dark:bg-gray-800/50 rounded-2xl border border-gray-200 dark:border-gray-700 p-8 shadow-lg hover:shadow-xl transition-all backdrop-blur-sm"
-                >
-                  <div className="w-14 h-14 bg-gradient-to-br from-blue-100 to-emerald-100 dark:from-blue-900/30 dark:to-emerald-900/30 rounded-xl flex items-center justify-center mb-6">
-                    <feature.icon className="w-7 h-7 text-blue-600 dark:text-blue-400" />
-                  </div>
-                  <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-3">{feature.title}</h3>
-                  <p className="text-gray-600 dark:text-gray-400 leading-relaxed">{feature.description}</p>
-                </motion.div>
-              ))}
-            </div>
-          </section>
-
-          <section className="space-y-12">
-            <motion.div
-              initial={{ opacity: 0 }}
-              whileInView={{ opacity: 1 }}
-              transition={{ duration: 0.8 }}
-              viewport={{ once: true }}
-              className="bg-gradient-to-br from-blue-600 to-emerald-600 rounded-3xl p-12 md:p-16 text-center text-white shadow-2xl"
-            >
-              <h2 className="text-4xl md:text-5xl font-bold mb-6">Ready to Transform Your Health?</h2>
-              <p className="text-lg text-blue-100 mb-8 max-w-2xl mx-auto">
-                Join thousands of users who are taking control of their health with MediIntel's intelligent health platform.
-              </p>
-              <motion.button
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-                onClick={() => navigate('/signup')}
-                className="px-8 py-4 bg-white text-blue-600 rounded-lg font-bold text-lg shadow-lg hover:shadow-xl transition-all"
-              >
-                Get Started Now
-              </motion.button>
-            </motion.div>
-          </section>
-
-          <motion.div
-            initial={{ opacity: 0 }}
-            whileInView={{ opacity: 1 }}
-            transition={{ duration: 0.8 }}
-            viewport={{ once: true }}
-            className="grid md:grid-cols-2 gap-8 pt-8"
-          >
-            <div className="space-y-4">
-              <h3 className="text-2xl font-bold text-gray-900 dark:text-white">Why Choose MediIntel?</h3>
-              <ul className="space-y-3">
-                {[
-                  'Advanced AI-powered analysis for accurate health insights',
-                  'Real-time monitoring of vital signs and health metrics',
-                  'Comprehensive disease detection using symptom analysis',
-                  'Personalized recommendations based on your health profile',
-                  'Bank-grade security and privacy protection',
-                  '24/7 access to your health data'
-                ].map((item, i) => (
-                  <motion.li
-                    key={i}
-                    initial={{ opacity: 0, x: -10 }}
-                    whileInView={{ opacity: 1, x: 0 }}
-                    transition={{ delay: i * 0.05 }}
-                    viewport={{ once: true }}
-                    className="flex items-start gap-3 text-gray-700 dark:text-gray-300"
-                  >
-                    <div className="w-6 h-6 rounded-full bg-gradient-to-br from-blue-500 to-emerald-500 flex items-center justify-center mt-0.5 flex-shrink-0">
-                      <span className="text-white text-sm font-bold">✓</span>
-                    </div>
-                    <span>{item}</span>
-                  </motion.li>
-                ))}
-              </ul>
-            </div>
-
-            <motion.div
-              initial={{ opacity: 0, scale: 0.95 }}
-              whileInView={{ opacity: 1, scale: 1 }}
-              viewport={{ once: true }}
-              className="bg-gradient-to-br from-blue-50 to-emerald-50 dark:from-blue-900/20 dark:to-emerald-900/20 rounded-2xl border border-blue-200/50 dark:border-blue-800/30 p-8 flex flex-col justify-center"
-            >
-              <div className="space-y-6">
-                <div>
-                  <div className="text-4xl font-bold text-blue-600 dark:text-blue-400">100%</div>
-                  <p className="text-gray-600 dark:text-gray-400">Secure & Encrypted</p>
-                </div>
-                <div>
-                  <div className="text-4xl font-bold text-emerald-600 dark:text-emerald-400">Instant</div>
-                  <p className="text-gray-600 dark:text-gray-400">AI-Powered Results</p>
-                </div>
-                <div>
-                  <div className="text-4xl font-bold text-blue-600 dark:text-blue-400">Easy</div>
-                  <p className="text-gray-600 dark:text-gray-400">User-Friendly Platform</p>
-                </div>
-              </div>
-            </motion.div>
+      <main className="relative z-10 max-w-7xl mx-auto px-6">
+        {/* HERO */}
+        <section className="py-24 text-center space-y-8">
+          <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} className="inline-flex items-center gap-2 px-4 py-2 border border-[#00d4ff]/40 rounded-full bg-[#00d4ff]/5" style={{ fontFamily: "'Share Tech Mono', monospace" }}>
+            <span className="w-2 h-2 rounded-full bg-[#00d4ff] animate-pulse" />
+            <span className="text-[#00d4ff] text-xs tracking-widest">SYSTEM ONLINE // AI-POWERED HEALTH INTELLIGENCE</span>
           </motion.div>
-        </div>
-      </main>
 
-      <footer className="relative z-10 border-t border-gray-200/50 dark:border-gray-800/50 bg-white/50 dark:bg-gray-900/50 backdrop-blur-xl mt-24">
-        <div className="max-w-7xl mx-auto px-6 py-12">
-          <div className="grid md:grid-cols-4 gap-8 mb-8">
-            <div>
-              <div className="flex items-center gap-2 mb-4">
-                <Activity className="w-5 h-5 text-blue-600" />
-                <span className="font-bold text-gray-900 dark:text-white">MediIntel</span>
-              </div>
-              <p className="text-sm text-gray-600 dark:text-gray-400">Intelligent healthcare for everyone</p>
+          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}>
+            <h1 style={{ fontFamily: "'Orbitron', sans-serif", lineHeight: 1.1 }} className="text-6xl md:text-8xl font-black tracking-tight">
+              <span className="text-white">LEVEL UP</span>
+              <br />
+              <span className="text-transparent bg-clip-text" style={{ backgroundImage: 'linear-gradient(135deg, #00d4ff, #7c3aed, #ff2d55)' }}>YOUR HEALTH</span>
+            </h1>
+          </motion.div>
+
+          <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.2 }} className="text-[#8892a4] text-lg max-w-2xl mx-auto leading-relaxed" style={{ fontFamily: "'Rajdhani', sans-serif", fontWeight: 300, letterSpacing: '0.05em' }}>
+            The world's first gamified health intelligence platform. Track vitals, detect diseases, and optimize your body like a pro — powered by frontier AI.
+          </motion.p>
+
+          {/* XP Progress showcase */}
+          <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }} className="relative max-w-sm mx-auto p-4 border border-[#00d4ff]/20 rounded-xl bg-[#0a0f1e]/80 corner-bracket">
+            <div className="flex items-center justify-between mb-2" style={{ fontFamily: "'Share Tech Mono', monospace" }}>
+              <span className="text-xs text-[#00d4ff]/60">HEALTH SCORE</span>
+              <span className="text-xs text-[#00d4ff]">LVL 12 → 13</span>
             </div>
-            <div>
-              <h4 className="font-semibold text-gray-900 dark:text-white mb-4">Features</h4>
-              <ul className="space-y-2 text-sm text-gray-600 dark:text-gray-400">
-                <li>Health Monitoring</li>
-                <li>Disease Detection</li>
-                <li>Risk Assessment</li>
-              </ul>
+            <div className="h-3 bg-[#0d1528] rounded-full overflow-hidden border border-[#00d4ff]/20">
+              <motion.div className="h-full xp-bar rounded-full" initial={{ width: 0 }} animate={{ width: '72%' }} transition={{ delay: 0.8, duration: 1.5, ease: 'easeOut' }} />
             </div>
-            <div>
-              <h4 className="font-semibold text-gray-900 dark:text-white mb-4">Company</h4>
-              <ul className="space-y-2 text-sm text-gray-600 dark:text-gray-400">
-                <li>About Us</li>
-                <li>Contact</li>
-                <li>Privacy Policy</li>
-              </ul>
+            <div className="flex justify-between mt-1 text-[10px] text-[#8892a4]" style={{ fontFamily: "'Share Tech Mono', monospace" }}>
+              <span>7,200 / 10,000 XP</span>
+              <span className="text-[#00d4ff]">+2,800 XP to next level</span>
             </div>
-            <div>
-              <h4 className="font-semibold text-gray-900 dark:text-white mb-4">Legal</h4>
-              <ul className="space-y-2 text-sm text-gray-600 dark:text-gray-400">
-                <li>Terms of Service</li>
-                <li>Privacy</li>
-                <li>Cookie Policy</li>
-              </ul>
+          </motion.div>
+
+          <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.4 }} className="flex flex-col sm:flex-row gap-4 justify-center">
+            <motion.button whileHover={{ scale: 1.03, boxShadow: '0 0 30px rgba(0,212,255,0.4)' }} whileTap={{ scale: 0.97 }} onClick={() => navigate('/signup')}
+              className="px-8 py-4 font-bold text-lg rounded-lg text-[#050810] tracking-widest flex items-center justify-center gap-2"
+              style={{ fontFamily: "'Orbitron', sans-serif", background: 'linear-gradient(135deg, #00d4ff, #7c3aed)' }}>
+              START MISSION <ArrowRight className="w-5 h-5" />
+            </motion.button>
+            <motion.button whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.97 }} onClick={() => navigate('/login')}
+              className="px-8 py-4 font-bold text-lg rounded-lg border border-[#00d4ff]/40 text-[#00d4ff] tracking-widest hover:bg-[#00d4ff]/10 transition-all"
+              style={{ fontFamily: "'Orbitron', sans-serif" }}>
+              CONTINUE GAME
+            </motion.button>
+          </motion.div>
+        </section>
+
+        {/* STATS BAR */}
+        <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} className="grid grid-cols-3 gap-4 mb-24">
+          {stats.map((s, i) => (
+            <div key={i} className="p-6 border border-[#00d4ff]/20 rounded-xl bg-[#0a0f1e]/60 text-center corner-bracket relative card-glow transition-all">
+              <s.icon className="w-6 h-6 mx-auto mb-2 text-[#00d4ff]" />
+              <div style={{ fontFamily: "'Orbitron', sans-serif" }} className="text-3xl font-black text-white mb-1">{s.value}</div>
+              <div className="text-[#8892a4] text-sm tracking-widest" style={{ fontFamily: "'Share Tech Mono', monospace" }}>{s.label}</div>
+            </div>
+          ))}
+        </motion.div>
+
+        {/* FEATURES GRID */}
+        <section className="mb-24 space-y-12">
+          <motion.div initial={{ opacity: 0 }} whileInView={{ opacity: 1 }} viewport={{ once: true }} className="text-center">
+            <div className="text-[#00d4ff]/60 text-sm tracking-[0.4em] mb-3" style={{ fontFamily: "'Share Tech Mono', monospace" }}>// ABILITY_TREE</div>
+            <h2 style={{ fontFamily: "'Orbitron', sans-serif" }} className="text-4xl font-black text-white tracking-tight">UNLOCK YOUR POWERS</h2>
+          </motion.div>
+
+          <div className="grid md:grid-cols-3 gap-5">
+            {features.map((f, i) => (
+              <motion.div key={i} initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.08 }} viewport={{ once: true }}
+                whileHover={{ y: -4, boxShadow: `0 0 30px ${f.color}25` }}
+                className="p-6 border rounded-xl bg-[#0a0f1e]/80 cursor-pointer transition-all relative overflow-hidden corner-bracket"
+                style={{ borderColor: `${f.color}30` }}>
+                <div className="absolute top-0 right-0 text-[10px] px-2 py-1 rounded-bl font-mono" style={{ background: `${f.color}20`, color: f.color, fontFamily: "'Share Tech Mono', monospace" }}>{f.xp}</div>
+                <div className="w-12 h-12 rounded-lg flex items-center justify-center mb-4" style={{ background: `${f.color}15`, border: `1px solid ${f.color}40` }}>
+                  <f.icon className="w-6 h-6" style={{ color: f.color }} />
+                </div>
+                <h3 style={{ fontFamily: "'Orbitron', sans-serif" }} className="font-bold text-white mb-2 tracking-wide">{f.title}</h3>
+                <p className="text-[#8892a4] text-sm leading-relaxed" style={{ fontFamily: "'Rajdhani', sans-serif", fontWeight: 300 }}>{f.description}</p>
+                <div className="mt-4 h-1 rounded-full bg-[#0d1528]">
+                  <motion.div className="h-full rounded-full" style={{ background: f.color, width: '0%' }} whileInView={{ width: `${60 + i * 8}%` }} viewport={{ once: true }} transition={{ delay: 0.3 + i * 0.1, duration: 0.8 }} />
+                </div>
+              </motion.div>
+            ))}
+          </div>
+        </section>
+
+        {/* CTA */}
+        <motion.section initial={{ opacity: 0, y: 30 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} className="mb-24">
+          <div className="relative p-12 rounded-2xl text-center overflow-hidden border border-[#00d4ff]/20" style={{ background: 'linear-gradient(135deg, #0a0f1e, #0d1528)' }}>
+            <div className="absolute inset-0 scan-line" />
+            <div className="absolute inset-0" style={{ background: 'radial-gradient(ellipse at center, rgba(0,212,255,0.08) 0%, transparent 70%)' }} />
+            <div className="relative z-10">
+              <div className="text-[#00d4ff] text-sm tracking-[0.4em] mb-4" style={{ fontFamily: "'Share Tech Mono', monospace" }}>// MISSION_BRIEFING</div>
+              <h2 style={{ fontFamily: "'Orbitron', sans-serif" }} className="text-4xl md:text-5xl font-black text-white mb-4">READY TO BEGIN?</h2>
+              <p className="text-[#8892a4] mb-8 max-w-xl mx-auto" style={{ fontFamily: "'Rajdhani', sans-serif" }}>Join the next generation of health-aware individuals. Your body is the final frontier — start exploring it today.</p>
+              <motion.button whileHover={{ scale: 1.04, boxShadow: '0 0 40px rgba(0,212,255,0.5)' }} whileTap={{ scale: 0.97 }} onClick={() => navigate('/signup')}
+                className="px-10 py-4 font-black text-lg rounded-lg text-[#050810] tracking-widest"
+                style={{ fontFamily: "'Orbitron', sans-serif", background: 'linear-gradient(135deg, #00d4ff, #7c3aed)' }}>
+                INITIALIZE PLAYER
+              </motion.button>
             </div>
           </div>
-          <div className="border-t border-gray-200 dark:border-gray-800 pt-8 text-center text-sm text-gray-600 dark:text-gray-400">
-            <p>&copy; 2024 MediIntel. All rights reserved. Your health, our priority.</p>
+        </motion.section>
+      </main>
+
+      <footer className="border-t border-[#00d4ff]/10 bg-[#050810]/80 py-8 relative z-10">
+        <div className="max-w-7xl mx-auto px-6 flex flex-col md:flex-row items-center justify-between gap-4">
+          <span style={{ fontFamily: "'Orbitron', sans-serif" }} className="font-black tracking-widest text-white text-sm">MEDI<span className="text-[#00d4ff]">INTEL</span></span>
+          <span className="text-[#8892a4] text-xs" style={{ fontFamily: "'Share Tech Mono', monospace" }}>© 2026 MediIntel Health OS // All systems nominal</span>
+          <div className="flex gap-4 text-xs text-[#8892a4]" style={{ fontFamily: "'Share Tech Mono', monospace" }}>
+            <span className="hover:text-[#00d4ff] cursor-pointer transition-colors">[Privacy]</span>
+            <span className="hover:text-[#00d4ff] cursor-pointer transition-colors">[Terms]</span>
+            <span className="hover:text-[#00d4ff] cursor-pointer transition-colors">[Docs]</span>
           </div>
         </div>
       </footer>

@@ -1,403 +1,178 @@
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Plus, CreditCard as Edit2, Trash2, Save, X, Heart, Activity, Thermometer, Wind, Droplet, TrendingUp } from 'lucide-react';
-import { healthRecordsAPI } from '../services/api';
-import { HealthRecord } from '../lib/supabase';
+import { Plus, Edit2, Trash2, Save, X, Heart, Activity, Thermometer, Wind, Droplet, TrendingUp } from 'lucide-react';
+import { healthApi } from '../services/api';
+import { useAuth } from '../contexts/AuthContext';
+
+interface HealthRecord { id: string; user_id: string; heart_rate: number|null; blood_pressure: string|null; temperature: number|null; oxygen_level: number|null; glucose: number|null; weight: number|null; notes: string|null; recorded_at: string; }
+
+const STYLE = `@import url('https://fonts.googleapis.com/css2?family=Rajdhani:wght@300;400;500;600;700&family=Orbitron:wght@400;700;900&family=Share+Tech+Mono&display=swap');
+.gbg{background-image:linear-gradient(rgba(16,185,129,0.03) 1px,transparent 1px),linear-gradient(90deg,rgba(16,185,129,0.03) 1px,transparent 1px);background-size:60px 60px;}
+.cc::before,.cc::after{content:'';position:absolute;width:12px;height:12px;border-color:#10b981;border-style:solid;}
+.cc::before{top:0;left:0;border-width:2px 0 0 2px;} .cc::after{bottom:0;right:0;border-width:0 2px 2px 0;}
+.inp:focus{box-shadow:0 0 0 1px #10b981,0 0 15px rgba(16,185,129,0.2);}`;
 
 export default function HealthMonitoring() {
+  const { user } = useAuth();
   const [records, setRecords] = useState<HealthRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
-  const [editingId, setEditingId] = useState<string | null>(null);
-  const [formData, setFormData] = useState({
-    heart_rate: '',
-    blood_pressure_systolic: '',
-    blood_pressure_diastolic: '',
-    temperature: '',
-    oxygen_level: '',
-    glucose: '',
-    weight: '',
-    notes: '',
-  });
+  const [editingId, setEditingId] = useState<string|null>(null);
+  const [form, setForm] = useState({ heart_rate:'', blood_pressure:'', temperature:'', oxygen_level:'', glucose:'', weight:'', notes:'' });
 
-  useEffect(() => {
-    loadRecords();
-  }, []);
+  useEffect(() => { if (user) load(); }, [user]);
 
-  const loadRecords = async () => {
+  const load = async () => {
     setLoading(true);
-    try {
-      const data = await healthRecordsAPI.getAll();
-      setRecords(data || []);
-    } catch (error) {
-      console.error('Error loading records:', error);
-    } finally {
-      setLoading(false);
-    }
+    try { setRecords(await healthApi.getAll(user?.id) || []); }
+    catch(e) { console.error(e); }
+    finally { setLoading(false); }
   };
 
-  const resetForm = () => {
-    setFormData({
-      heart_rate: '',
-      blood_pressure_systolic: '',
-      blood_pressure_diastolic: '',
-      temperature: '',
-      oxygen_level: '',
-      glucose: '',
-      weight: '',
-      notes: '',
-    });
-    setEditingId(null);
-    setShowForm(false);
-  };
+  const reset = () => { setForm({ heart_rate:'', blood_pressure:'', temperature:'', oxygen_level:'', glucose:'', weight:'', notes:'' }); setEditingId(null); setShowForm(false); };
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const submit = async (e: React.FormEvent) => {
     e.preventDefault();
-
-    const recordData = {
-      heart_rate: formData.heart_rate ? parseInt(formData.heart_rate) : null,
-      blood_pressure_systolic: formData.blood_pressure_systolic ? parseInt(formData.blood_pressure_systolic) : null,
-      blood_pressure_diastolic: formData.blood_pressure_diastolic ? parseInt(formData.blood_pressure_diastolic) : null,
-      temperature: formData.temperature ? parseFloat(formData.temperature) : null,
-      oxygen_level: formData.oxygen_level ? parseInt(formData.oxygen_level) : null,
-      glucose: formData.glucose ? parseInt(formData.glucose) : null,
-      weight: formData.weight ? parseFloat(formData.weight) : null,
-      notes: formData.notes,
-    };
-
+    const d: Record<string,unknown> = {};
+    if (form.heart_rate) d.heart_rate = parseInt(form.heart_rate);
+    if (form.blood_pressure) d.blood_pressure = form.blood_pressure;
+    if (form.temperature) d.temperature = parseFloat(form.temperature);
+    if (form.oxygen_level) d.oxygen_level = parseInt(form.oxygen_level);
+    if (form.glucose) d.glucose = parseInt(form.glucose);
+    if (form.weight) d.weight = parseFloat(form.weight);
+    if (form.notes) d.notes = form.notes;
     try {
-      if (editingId) {
-        await healthRecordsAPI.update(editingId, recordData);
-      } else {
-        await healthRecordsAPI.create(recordData);
-      }
-      await loadRecords();
-      resetForm();
-    } catch (error) {
-      console.error('Error saving record:', error);
-    }
+      if (!user) throw new Error('Not authenticated');
+      if (editingId) await healthApi.update(editingId, d);
+      else await healthApi.create(user.id, d);
+      await load(); reset();
+    } catch(e) { console.error(e); }
   };
 
-  const handleEdit = (record: HealthRecord) => {
-    setFormData({
-      heart_rate: record.heart_rate?.toString() || '',
-      blood_pressure_systolic: record.blood_pressure_systolic?.toString() || '',
-      blood_pressure_diastolic: record.blood_pressure_diastolic?.toString() || '',
-      temperature: record.temperature?.toString() || '',
-      oxygen_level: record.oxygen_level?.toString() || '',
-      glucose: record.glucose?.toString() || '',
-      weight: record.weight?.toString() || '',
-      notes: record.notes || '',
-    });
-    setEditingId(record.id);
-    setShowForm(true);
-  };
-
-  const handleDelete = async (id: string) => {
-    if (confirm('Are you sure you want to delete this record?')) {
-      try {
-        await healthRecordsAPI.delete(id);
-        await loadRecords();
-      } catch (error) {
-        console.error('Error deleting record:', error);
-      }
-    }
-  };
+  const vitals = [
+    { key: 'heart_rate', label: 'HEART_RATE', unit: 'BPM', icon: Heart, color: '#ff2d55', type: 'number', ph: '72' },
+    { key: 'blood_pressure', label: 'BLOOD_PRESSURE', unit: 'mmHg', icon: Activity, color: '#00d4ff', type: 'text', ph: '120/80' },
+    { key: 'temperature', label: 'TEMPERATURE', unit: '°C', icon: Thermometer, color: '#f59e0b', type: 'number', ph: '36.6' },
+    { key: 'oxygen_level', label: 'OXYGEN_LEVEL', unit: '%', icon: Wind, color: '#10b981', type: 'number', ph: '98' },
+    { key: 'glucose', label: 'GLUCOSE', unit: 'mg/dL', icon: Droplet, color: '#a855f7', type: 'number', ph: '90' },
+    { key: 'weight', label: 'WEIGHT', unit: 'kg', icon: TrendingUp, color: '#ec4899', type: 'number', ph: '70.5' },
+  ];
 
   return (
-    <div className="min-h-screen bg-white dark:bg-gray-900">
-      <div className="max-w-7xl mx-auto p-6 space-y-6">
-        <div className="flex items-center justify-between">
+    <div style={{ fontFamily: "'Rajdhani', sans-serif" }} className="min-h-screen bg-[#050810] text-white">
+      <style>{STYLE}</style>
+      <div className="fixed inset-0 gbg pointer-events-none" />
+
+      <div className="relative z-10 max-w-7xl mx-auto p-6 space-y-6">
+        {/* Header */}
+        <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} className="flex items-center justify-between">
           <div>
-            <h1 className="text-4xl font-bold text-gray-900 dark:text-white mb-2">Health Monitoring</h1>
-            <p className="text-gray-600 dark:text-gray-400">Track and manage your vital signs</p>
+            <div className="text-[#10b981]/60 text-xs tracking-widest mb-1" style={{ fontFamily: "'Share Tech Mono', monospace" }}>// VITALS_TRACKER</div>
+            <h1 style={{ fontFamily: "'Orbitron', sans-serif" }} className="text-4xl font-black text-white">HEALTH <span className="text-transparent bg-clip-text" style={{ backgroundImage: 'linear-gradient(135deg,#10b981,#00d4ff)' }}>MONITOR</span></h1>
           </div>
-          <motion.button
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
+          <motion.button whileHover={{ scale: 1.05, boxShadow: '0 0 20px rgba(16,185,129,0.4)' }} whileTap={{ scale: 0.95 }}
             onClick={() => setShowForm(!showForm)}
-            className="px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-semibold shadow-lg flex items-center gap-2 transition-colors"
-          >
-            {showForm ? <X className="w-5 h-5" /> : <Plus className="w-5 h-5" />}
-            {showForm ? 'Cancel' : 'Add Record'}
+            className="px-5 py-2.5 font-black text-sm rounded-lg flex items-center gap-2 tracking-widest"
+            style={{ fontFamily: "'Orbitron', sans-serif", background: showForm ? '#1a2540' : 'linear-gradient(135deg,#10b981,#00d4ff)', color: showForm ? '#8892a4' : '#050810', border: showForm ? '1px solid rgba(16,185,129,0.3)' : 'none' }}>
+            {showForm ? <><X className="w-4 h-4" />[CANCEL]</> : <><Plus className="w-4 h-4" />[ADD_RECORD]</>}
           </motion.button>
-        </div>
+        </motion.div>
 
+        {/* Form */}
         {showForm && (
-          <motion.div
-            initial={{ opacity: 0, y: -20 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -20 }}
-            className="bg-gray-50 dark:bg-gray-800 rounded-2xl border-2 border-blue-200 dark:border-blue-800 p-6"
-          >
-            <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-6">
-              {editingId ? 'Edit Health Record' : 'New Health Record'}
-            </h2>
-            <form onSubmit={handleSubmit} className="space-y-6">
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                <div>
-                  <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2 flex items-center gap-2">
-                    <Heart className="w-4 h-4 text-red-500" />
-                    Heart Rate (BPM)
-                  </label>
-                  <input
-                    type="number"
-                    value={formData.heart_rate}
-                    onChange={(e) => setFormData({ ...formData, heart_rate: e.target.value })}
-                    className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-900 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    placeholder="e.g., 72"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2 flex items-center gap-2">
-                    <Activity className="w-4 h-4 text-blue-500" />
-                    Systolic (mmHg)
-                  </label>
-                  <input
-                    type="number"
-                    value={formData.blood_pressure_systolic}
-                    onChange={(e) => setFormData({ ...formData, blood_pressure_systolic: e.target.value })}
-                    className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-900 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    placeholder="e.g., 120"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2 flex items-center gap-2">
-                    <Activity className="w-4 h-4 text-blue-500" />
-                    Diastolic (mmHg)
-                  </label>
-                  <input
-                    type="number"
-                    value={formData.blood_pressure_diastolic}
-                    onChange={(e) => setFormData({ ...formData, blood_pressure_diastolic: e.target.value })}
-                    className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-900 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    placeholder="e.g., 80"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2 flex items-center gap-2">
-                    <Thermometer className="w-4 h-4 text-orange-500" />
-                    Temperature (°C)
-                  </label>
-                  <input
-                    type="number"
-                    step="0.1"
-                    value={formData.temperature}
-                    onChange={(e) => setFormData({ ...formData, temperature: e.target.value })}
-                    className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-900 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    placeholder="e.g., 36.6"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2 flex items-center gap-2">
-                    <Wind className="w-4 h-4 text-green-500" />
-                    Oxygen Level (%)
-                  </label>
-                  <input
-                    type="number"
-                    value={formData.oxygen_level}
-                    onChange={(e) => setFormData({ ...formData, oxygen_level: e.target.value })}
-                    className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-900 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    placeholder="e.g., 98"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2 flex items-center gap-2">
-                    <Droplet className="w-4 h-4 text-purple-500" />
-                    Glucose (mg/dL)
-                  </label>
-                  <input
-                    type="number"
-                    value={formData.glucose}
-                    onChange={(e) => setFormData({ ...formData, glucose: e.target.value })}
-                    className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-900 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    placeholder="e.g., 90"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2 flex items-center gap-2">
-                    <TrendingUp className="w-4 h-4 text-teal-500" />
-                    Weight (kg)
-                  </label>
-                  <input
-                    type="number"
-                    step="0.1"
-                    value={formData.weight}
-                    onChange={(e) => setFormData({ ...formData, weight: e.target.value })}
-                    className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-900 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    placeholder="e.g., 70.5"
-                  />
-                </div>
-
-                <div className="md:col-span-2">
-                  <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
-                    Notes (Optional)
-                  </label>
-                  <input
-                    type="text"
-                    value={formData.notes}
-                    onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
-                    className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-900 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    placeholder="Any additional notes..."
-                  />
+          <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} className="relative p-6 border border-[#10b981]/30 rounded-xl bg-[#0a0f1e]/80 cc">
+            <div className="text-[#10b981]/60 text-xs tracking-widest mb-4" style={{ fontFamily: "'Share Tech Mono', monospace" }}>// {editingId ? 'EDIT_RECORD' : 'NEW_RECORD'}</div>
+            <form onSubmit={submit}>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+                {vitals.map(v => (
+                  <div key={v.key}>
+                    <label className="flex items-center gap-1.5 text-xs mb-1.5 tracking-widest" style={{ color: `${v.color}80`, fontFamily: "'Share Tech Mono', monospace" }}>
+                      <v.icon className="w-3 h-3" style={{ color: v.color }} />{v.label} ({v.unit})
+                    </label>
+                    <input type={v.type} step={v.key === 'temperature' || v.key === 'weight' ? '0.1' : undefined}
+                      value={(form as any)[v.key]} onChange={e => setForm({ ...form, [v.key]: e.target.value })}
+                      placeholder={v.ph}
+                      className="inp w-full px-3 py-2.5 bg-[#0d1528] border rounded-lg text-white placeholder-[#8892a4]/40 focus:outline-none text-sm transition-all"
+                      style={{ borderColor: `${v.color}25`, fontFamily: "'Share Tech Mono', monospace" }} />
+                  </div>
+                ))}
+                <div className="md:col-span-3">
+                  <label className="block text-xs text-[#10b981]/60 mb-1.5 tracking-widest" style={{ fontFamily: "'Share Tech Mono', monospace" }}>NOTES (OPTIONAL)</label>
+                  <input type="text" value={form.notes} onChange={e => setForm({ ...form, notes: e.target.value })} placeholder="Any additional observations..."
+                    className="inp w-full px-3 py-2.5 bg-[#0d1528] border border-[#10b981]/20 rounded-lg text-white placeholder-[#8892a4]/40 focus:outline-none text-sm transition-all"
+                    style={{ fontFamily: "'Share Tech Mono', monospace" }} />
                 </div>
               </div>
-
-              <div className="flex gap-4">
-                <motion.button
-                  whileHover={{ scale: 1.02 }}
-                  whileTap={{ scale: 0.98 }}
-                  type="submit"
-                  className="px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-semibold shadow-lg flex items-center gap-2 transition-colors"
-                >
-                  <Save className="w-5 h-5" />
-                  {editingId ? 'Update' : 'Save'} Record
+              <div className="flex gap-3">
+                <motion.button whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} type="submit"
+                  className="px-5 py-2.5 font-black text-sm rounded-lg flex items-center gap-2 tracking-widest"
+                  style={{ fontFamily: "'Orbitron', sans-serif", background: 'linear-gradient(135deg,#10b981,#00d4ff)', color: '#050810' }}>
+                  <Save className="w-4 h-4" />[{editingId ? 'UPDATE' : 'SAVE'}]
                 </motion.button>
-                {editingId && (
-                  <motion.button
-                    whileHover={{ scale: 1.02 }}
-                    whileTap={{ scale: 0.98 }}
-                    type="button"
-                    onClick={resetForm}
-                    className="px-6 py-3 bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300 rounded-xl font-semibold transition-colors"
-                  >
-                    Cancel Edit
-                  </motion.button>
-                )}
+                {editingId && <motion.button whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} type="button" onClick={reset}
+                  className="px-5 py-2.5 font-black text-sm rounded-lg border border-[#10b981]/20 text-[#8892a4] hover:text-white tracking-widest"
+                  style={{ fontFamily: "'Orbitron', sans-serif" }}>[CANCEL_EDIT]</motion.button>}
               </div>
             </form>
           </motion.div>
         )}
 
-        <div className="space-y-4">
-          <h2 className="text-2xl font-bold text-gray-900 dark:text-white">Health Records</h2>
+        {/* Records */}
+        <div>
+          <div className="flex items-center gap-2 mb-4">
+            <span style={{ fontFamily: "'Orbitron', sans-serif" }} className="font-bold text-white">HEALTH_RECORDS</span>
+            <span className="text-xs text-[#10b981]" style={{ fontFamily: "'Share Tech Mono', monospace" }}>[{records.length}]</span>
+          </div>
 
           {loading ? (
-            <div className="text-center py-12">
-              <div className="inline-block w-12 h-12 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
-            </div>
+            <div className="text-center py-12"><div className="inline-block w-10 h-10 border-2 border-[#10b981] border-t-transparent rounded-full animate-spin" /></div>
           ) : records.length === 0 ? (
-            <div className="text-center py-12 bg-gray-50 dark:bg-gray-800 rounded-2xl border-2 border-dashed border-gray-300 dark:border-gray-700">
-              <Activity className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-              <p className="text-gray-600 dark:text-gray-400 text-lg">No health records yet</p>
-              <p className="text-gray-500 dark:text-gray-500 text-sm">Click "Add Record" to start tracking your vitals</p>
+            <div className="relative p-12 border border-[#10b981]/10 rounded-xl bg-[#0a0f1e]/50 text-center cc">
+              <Activity className="w-14 h-14 mx-auto mb-4 text-[#10b981]/20" />
+              <div style={{ fontFamily: "'Orbitron', sans-serif" }} className="text-[#8892a4] font-bold">NO_RECORDS_FOUND</div>
+              <div className="text-[#8892a4]/50 text-xs mt-2" style={{ fontFamily: "'Share Tech Mono', monospace" }}>click [ADD_RECORD] to start tracking</div>
             </div>
           ) : (
-            <div className="grid grid-cols-1 gap-4">
-              {records.map((record, index) => (
-                <motion.div
-                  key={record.id}
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: index * 0.05 }}
-                  className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 p-6 hover:shadow-lg transition-shadow"
-                >
-                  <div className="flex items-start justify-between mb-4">
+            <div className="space-y-3">
+              {records.map((rec, i) => (
+                <motion.div key={rec.id} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }}
+                  className="relative p-5 border border-[#10b981]/15 rounded-xl bg-[#0a0f1e]/80 hover:border-[#10b981]/30 transition-all cc">
+                  <div className="flex items-center justify-between mb-4">
                     <div>
-                      <p className="text-sm text-gray-500 dark:text-gray-400">
-                        {new Date(record.recorded_at).toLocaleDateString('en-US', {
-                          weekday: 'long',
-                          year: 'numeric',
-                          month: 'long',
-                          day: 'numeric',
-                          hour: '2-digit',
-                          minute: '2-digit'
-                        })}
-                      </p>
+                      <div className="text-xs text-[#10b981]/60" style={{ fontFamily: "'Share Tech Mono', monospace" }}>
+                        {new Date(rec.recorded_at).toLocaleDateString('en-US', { weekday:'short', month:'short', day:'numeric', hour:'2-digit', minute:'2-digit' })}
+                      </div>
                     </div>
                     <div className="flex gap-2">
-                      <motion.button
-                        whileHover={{ scale: 1.1 }}
-                        whileTap={{ scale: 0.9 }}
-                        onClick={() => handleEdit(record)}
-                        className="p-2 bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 rounded-lg hover:bg-blue-100 dark:hover:bg-blue-900/40 transition-colors"
-                      >
+                      <motion.button whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }}
+                        onClick={() => { setForm({ heart_rate: rec.heart_rate?.toString()||'', blood_pressure: rec.blood_pressure||'', temperature: rec.temperature?.toString()||'', oxygen_level: rec.oxygen_level?.toString()||'', glucose: rec.glucose?.toString()||'', weight: rec.weight?.toString()||'', notes: rec.notes||'' }); setEditingId(rec.id); setShowForm(true); }}
+                        className="p-2 border border-[#00d4ff]/20 rounded-lg text-[#00d4ff] hover:bg-[#00d4ff]/10 transition-all">
                         <Edit2 className="w-4 h-4" />
                       </motion.button>
-                      <motion.button
-                        whileHover={{ scale: 1.1 }}
-                        whileTap={{ scale: 0.9 }}
-                        onClick={() => handleDelete(record.id)}
-                        className="p-2 bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 rounded-lg hover:bg-red-100 dark:hover:bg-red-900/40 transition-colors"
-                      >
+                      <motion.button whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }}
+                        onClick={() => confirm('DELETE_RECORD?') && healthApi.delete(rec.id).then(load)}
+                        className="p-2 border border-[#ff2d55]/20 rounded-lg text-[#ff2d55] hover:bg-[#ff2d55]/10 transition-all">
                         <Trash2 className="w-4 h-4" />
                       </motion.button>
                     </div>
                   </div>
-
-                  <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
-                    {record.heart_rate && (
-                      <div className="p-3 bg-red-50 dark:bg-red-900/20 rounded-xl">
-                        <div className="flex items-center gap-2 mb-1">
-                          <Heart className="w-4 h-4 text-red-500" />
-                          <span className="text-xs text-gray-600 dark:text-gray-400">Heart Rate</span>
+                  <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
+                    {vitals.map(v => {
+                      const val = (rec as any)[v.key];
+                      if (!val) return null;
+                      return (
+                        <div key={v.key} className="p-3 rounded-lg border" style={{ borderColor: `${v.color}20`, background: `${v.color}08` }}>
+                          <div className="flex items-center gap-1 mb-1">
+                            <v.icon className="w-3 h-3" style={{ color: v.color }} />
+                            <span className="text-xs" style={{ color: `${v.color}70`, fontFamily: "'Share Tech Mono', monospace" }}>{v.key.split('_')[0].toUpperCase()}</span>
+                          </div>
+                          <div className="font-black text-white text-base" style={{ fontFamily: "'Orbitron', sans-serif" }}>{val}</div>
+                          <div className="text-xs mt-0.5" style={{ color: `${v.color}60`, fontFamily: "'Share Tech Mono', monospace" }}>{v.unit}</div>
                         </div>
-                        <p className="text-lg font-bold text-gray-900 dark:text-white">{record.heart_rate} <span className="text-sm font-normal">BPM</span></p>
-                      </div>
-                    )}
-
-                    {(record.blood_pressure_systolic && record.blood_pressure_diastolic) && (
-                      <div className="p-3 bg-blue-50 dark:bg-blue-900/20 rounded-xl">
-                        <div className="flex items-center gap-2 mb-1">
-                          <Activity className="w-4 h-4 text-blue-500" />
-                          <span className="text-xs text-gray-600 dark:text-gray-400">BP</span>
-                        </div>
-                        <p className="text-lg font-bold text-gray-900 dark:text-white">{record.blood_pressure_systolic}/{record.blood_pressure_diastolic}</p>
-                      </div>
-                    )}
-
-                    {record.temperature && (
-                      <div className="p-3 bg-orange-50 dark:bg-orange-900/20 rounded-xl">
-                        <div className="flex items-center gap-2 mb-1">
-                          <Thermometer className="w-4 h-4 text-orange-500" />
-                          <span className="text-xs text-gray-600 dark:text-gray-400">Temp</span>
-                        </div>
-                        <p className="text-lg font-bold text-gray-900 dark:text-white">{record.temperature}°C</p>
-                      </div>
-                    )}
-
-                    {record.oxygen_level && (
-                      <div className="p-3 bg-green-50 dark:bg-green-900/20 rounded-xl">
-                        <div className="flex items-center gap-2 mb-1">
-                          <Wind className="w-4 h-4 text-green-500" />
-                          <span className="text-xs text-gray-600 dark:text-gray-400">O2</span>
-                        </div>
-                        <p className="text-lg font-bold text-gray-900 dark:text-white">{record.oxygen_level}%</p>
-                      </div>
-                    )}
-
-                    {record.glucose && (
-                      <div className="p-3 bg-purple-50 dark:bg-purple-900/20 rounded-xl">
-                        <div className="flex items-center gap-2 mb-1">
-                          <Droplet className="w-4 h-4 text-purple-500" />
-                          <span className="text-xs text-gray-600 dark:text-gray-400">Glucose</span>
-                        </div>
-                        <p className="text-lg font-bold text-gray-900 dark:text-white">{record.glucose} <span className="text-sm font-normal">mg/dL</span></p>
-                      </div>
-                    )}
-
-                    {record.weight && (
-                      <div className="p-3 bg-teal-50 dark:bg-teal-900/20 rounded-xl">
-                        <div className="flex items-center gap-2 mb-1">
-                          <TrendingUp className="w-4 h-4 text-teal-500" />
-                          <span className="text-xs text-gray-600 dark:text-gray-400">Weight</span>
-                        </div>
-                        <p className="text-lg font-bold text-gray-900 dark:text-white">{record.weight} <span className="text-sm font-normal">kg</span></p>
-                      </div>
-                    )}
+                      );
+                    })}
                   </div>
-
-                  {record.notes && (
-                    <div className="mt-4 p-3 bg-gray-50 dark:bg-gray-900 rounded-xl">
-                      <p className="text-sm text-gray-700 dark:text-gray-300">{record.notes}</p>
-                    </div>
-                  )}
+                  {rec.notes && <div className="mt-3 px-3 py-2 rounded-lg border border-[#10b981]/10 bg-[#0d1528]/40 text-xs text-[#8892a4]" style={{ fontFamily: "'Share Tech Mono', monospace" }}>NOTE: {rec.notes}</div>}
                 </motion.div>
               ))}
             </div>

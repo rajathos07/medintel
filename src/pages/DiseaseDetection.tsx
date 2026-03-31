@@ -1,286 +1,146 @@
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Search, Sparkles, AlertCircle, CheckCircle, X, Loader } from 'lucide-react';
-import { diseaseDetectionAPI } from '../services/api';
+import { Search, Sparkles, AlertCircle, CheckCircle, X, Loader, Cpu } from 'lucide-react';
+import { diseaseApi } from '../services/api';
+import { useAuth } from '../contexts/AuthContext';
 
-const COMMON_SYMPTOMS = [
-  'Fever', 'Cough', 'Fatigue', 'Headache', 'Sore Throat',
-  'Nausea', 'Dizziness', 'Chest Pain', 'Shortness of Breath',
-  'Muscle Pain', 'Joint Pain', 'Chills', 'Loss of Appetite',
-  'Abdominal Pain', 'Vomiting', 'Diarrhea', 'Runny Nose',
-  'Congestion', 'Rash', 'Sweating'
-];
-
-interface Disease {
-  name: string;
-  confidence: number;
-  description: string;
-}
-
-interface DetectionResult {
-  diseases: Disease[];
-  recommendations: string;
-  severity: string;
-}
+const SYMPTOMS = ['Fever','Cough','Fatigue','Headache','Sore Throat','Nausea','Dizziness','Chest Pain','Shortness of Breath','Muscle Pain','Joint Pain','Chills','Loss of Appetite','Abdominal Pain','Vomiting','Diarrhea','Runny Nose','Congestion','Rash','Sweating'];
+interface Disease { name: string; confidence: number; }
+interface DetectionResult { diseases: Disease[]; recommendations: string[]; severity: string; }
 
 export default function DiseaseDetection() {
-  const [selectedSymptoms, setSelectedSymptoms] = useState<string[]>([]);
-  const [searchTerm, setSearchTerm] = useState('');
+  const { user } = useAuth();
+  const [selected, setSelected] = useState<string[]>([]);
+  const [search, setSearch] = useState('');
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<DetectionResult | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  const filteredSymptoms = COMMON_SYMPTOMS.filter(
-    symptom =>
-      symptom.toLowerCase().includes(searchTerm.toLowerCase()) &&
-      !selectedSymptoms.includes(symptom)
-  );
+  const filtered = SYMPTOMS.filter(s => s.toLowerCase().includes(search.toLowerCase()) && !selected.includes(s));
+  const toggle = (s: string) => setSelected(p => p.includes(s) ? p.filter(x => x !== s) : [...p, s]);
 
-  const toggleSymptom = (symptom: string) => {
-    if (selectedSymptoms.includes(symptom)) {
-      setSelectedSymptoms(selectedSymptoms.filter(s => s !== symptom));
-    } else {
-      setSelectedSymptoms([...selectedSymptoms, symptom]);
-    }
-  };
-
-  const handleAnalyze = async () => {
-    if (selectedSymptoms.length === 0) return;
-
-    setLoading(true);
-    setError(null);
+  const analyze = async () => {
+    if (!selected.length) return;
+    setLoading(true); setError(null);
     try {
-      const data = await diseaseDetectionAPI.detect(selectedSymptoms);
-      setResult(data);
-      await diseaseDetectionAPI.saveAssessment(selectedSymptoms, data);
-    } catch (err) {
-      const errorMsg = err instanceof Error ? err.message : 'Failed to analyze symptoms. Please ensure you have configured the Groq API key for the edge function.';
-      setError(errorMsg);
-      console.error('Error detecting diseases:', err);
-    } finally {
-      setLoading(false);
-    }
+      if (!user) throw new Error('Not authenticated');
+      setResult(await diseaseApi.detect(user.id, selected));
+    } catch (e) { setError(e instanceof Error ? e.message : 'Analysis failed'); }
+    finally { setLoading(false); }
   };
 
-  const getSeverityColor = (severity: string) => {
-    switch (severity.toLowerCase()) {
-      case 'high': return 'from-red-500 to-orange-500';
-      case 'medium': return 'from-yellow-500 to-orange-500';
-      default: return 'from-green-500 to-teal-500';
-    }
-  };
+  const sev = { high: { c: '#ff2d55', bg: 'rgba(255,45,85,0.15)', l: 'CRITICAL' }, medium: { c: '#f59e0b', bg: 'rgba(245,158,11,0.15)', l: 'MODERATE' }, low: { c: '#10b981', bg: 'rgba(16,185,129,0.15)', l: 'STABLE' } };
+  const s = sev[(result?.severity?.toLowerCase() as keyof typeof sev) ?? 'low'] ?? sev.low;
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 relative overflow-hidden">
-      <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48ZGVmcz48cGF0dGVybiBpZD0iZ3JpZCIgd2lkdGg9IjQwIiBoZWlnaHQ9IjQwIiBwYXR0ZXJuVW5pdHM9InVzZXJTcGFjZU9uVXNlIj48cGF0aCBkPSJNIDQwIDAgTCAwIDAgMCA0MCIgZmlsbD0ibm9uZSIgc3Ryb2tlPSJjeWFuIiBzdHJva2Utb3BhY2l0eT0iMC4xIiBzdHJva2Utd2lkdGg9IjEiLz48L3BhdHRlcm4+PC9kZWZzPjxyZWN0IHdpZHRoPSIxMDAlIiBoZWlnaHQ9IjEwMCUiIGZpbGw9InVybCgjZ3JpZCkiLz48L3N2Zz4=')] opacity-40"></div>
+    <div style={{ fontFamily: "'Rajdhani', sans-serif" }} className="min-h-screen bg-[#050810] text-white">
+      <style>{`@import url('https://fonts.googleapis.com/css2?family=Rajdhani:wght@300;400;500;600;700&family=Orbitron:wght@400;700;900&family=Share+Tech+Mono&display=swap');
+      .gbg{background-image:linear-gradient(rgba(0,212,255,0.03) 1px,transparent 1px),linear-gradient(90deg,rgba(0,212,255,0.03) 1px,transparent 1px);background-size:60px 60px;}
+      .cc::before,.cc::after{content:'';position:absolute;width:12px;height:12px;border-color:#00d4ff;border-style:solid;}
+      .cc::before{top:0;left:0;border-width:2px 0 0 2px;} .cc::after{bottom:0;right:0;border-width:0 2px 2px 0;}
+      .ss::-webkit-scrollbar{width:4px;} .ss::-webkit-scrollbar-thumb{background:rgba(0,212,255,0.3);border-radius:4px;}`}</style>
+      <div className="fixed inset-0 gbg pointer-events-none" />
 
-      <div className="absolute top-0 left-1/4 w-96 h-96 bg-cyan-500/20 rounded-full blur-3xl animate-pulse"></div>
-      <div className="absolute bottom-0 right-1/4 w-96 h-96 bg-purple-500/20 rounded-full blur-3xl animate-pulse delay-1000"></div>
-
-      <div className="relative max-w-7xl mx-auto p-6 space-y-8">
-        <motion.div
-          initial={{ opacity: 0, y: -20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="text-center space-y-4"
-        >
-          <div className="inline-flex items-center gap-3 px-6 py-3 bg-cyan-500/10 border border-cyan-500/30 rounded-full backdrop-blur-sm">
-            <Sparkles className="w-5 h-5 text-cyan-400" />
-            <span className="text-cyan-300 font-semibold">AI-Powered Disease Detection</span>
+      <div className="relative z-10 max-w-7xl mx-auto p-6 space-y-6">
+        <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} className="text-center py-6 space-y-3">
+          <div className="inline-flex items-center gap-2 px-4 py-2 border border-[#00d4ff]/30 rounded-full bg-[#00d4ff]/5" style={{ fontFamily: "'Share Tech Mono', monospace" }}>
+            <Cpu className="w-4 h-4 text-[#00d4ff]" /><span className="text-[#00d4ff] text-xs tracking-widest">NEURAL_SCAN // AI DIAGNOSTIC ENGINE</span>
           </div>
-          <h1 className="text-5xl font-bold text-white">
-            Symptom <span className="text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-purple-400">Analysis</span>
-          </h1>
-          <p className="text-gray-400 text-lg max-w-2xl mx-auto">
-            Select your symptoms and let our AI analyze potential conditions
-          </p>
+          <h1 style={{ fontFamily: "'Orbitron', sans-serif" }} className="text-5xl font-black">SYMPTOM <span className="text-transparent bg-clip-text" style={{ backgroundImage: 'linear-gradient(135deg,#00d4ff,#7c3aed)' }}>SCANNER</span></h1>
         </motion.div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-          <motion.div
-            initial={{ opacity: 0, x: -20 }}
-            animate={{ opacity: 1, x: 0 }}
-            className="space-y-6"
-          >
-            <div className="bg-slate-800/50 backdrop-blur-xl border border-cyan-500/20 rounded-2xl p-6 shadow-2xl shadow-cyan-500/10">
-              <h2 className="text-2xl font-bold text-white mb-4 flex items-center gap-2">
-                <Search className="w-6 h-6 text-cyan-400" />
-                Select Symptoms
-              </h2>
-
-              <div className="relative mb-6">
-                <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
-                <input
-                  type="text"
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  placeholder="Search symptoms..."
-                  className="w-full pl-12 pr-4 py-3 bg-slate-900/50 border border-cyan-500/30 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-cyan-500/50"
-                />
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }}>
+            <div className="relative p-6 border border-[#00d4ff]/20 rounded-xl bg-[#0a0f1e]/80 cc">
+              <div className="flex items-center gap-2 mb-4">
+                <Search className="w-5 h-5 text-[#00d4ff]" />
+                <span style={{ fontFamily: "'Orbitron', sans-serif" }} className="font-bold text-white">SELECT SYMPTOMS</span>
+                <span className="ml-auto text-xs text-[#00d4ff]" style={{ fontFamily: "'Share Tech Mono', monospace" }}>{selected.length}_ACTIVE</span>
               </div>
-
-              <div className="flex flex-wrap gap-2 mb-6">
-                {selectedSymptoms.map((symptom) => (
-                  <motion.div
-                    key={symptom}
-                    initial={{ scale: 0 }}
-                    animate={{ scale: 1 }}
-                    exit={{ scale: 0 }}
-                    className="px-4 py-2 bg-gradient-to-r from-cyan-500 to-purple-500 rounded-full text-white font-medium flex items-center gap-2 shadow-lg shadow-cyan-500/30"
-                  >
-                    {symptom}
-                    <button
-                      onClick={() => toggleSymptom(symptom)}
-                      className="hover:bg-white/20 rounded-full p-1 transition-colors"
-                    >
-                      <X className="w-4 h-4" />
-                    </button>
-                  </motion.div>
+              <div className="relative mb-4">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#8892a4]" />
+                <input value={search} onChange={e => setSearch(e.target.value)} placeholder="search_symptoms..."
+                  className="w-full pl-10 pr-4 py-2.5 bg-[#0d1528] border border-[#00d4ff]/20 rounded-lg text-white placeholder-[#8892a4]/50 focus:outline-none focus:border-[#00d4ff]/50 text-sm"
+                  style={{ fontFamily: "'Share Tech Mono', monospace" }} />
+              </div>
+              {selected.length > 0 && (
+                <div className="flex flex-wrap gap-2 mb-4 p-3 border border-[#00d4ff]/10 rounded-lg bg-[#0d1528]/50">
+                  {selected.map(sym => (
+                    <motion.div key={sym} initial={{ scale: 0 }} animate={{ scale: 1 }} className="flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold text-[#050810]" style={{ background: 'linear-gradient(135deg,#00d4ff,#7c3aed)', fontFamily: "'Share Tech Mono', monospace" }}>
+                      {sym}<button onClick={() => toggle(sym)}><X className="w-3 h-3" /></button>
+                    </motion.div>
+                  ))}
+                </div>
+              )}
+              <div className="grid grid-cols-2 gap-2 max-h-56 overflow-y-auto ss mb-4">
+                {filtered.map(sym => (
+                  <motion.button key={sym} whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.97 }} onClick={() => toggle(sym)}
+                    className="px-3 py-2 text-left border border-[#00d4ff]/15 hover:border-[#00d4ff]/40 rounded-lg text-[#8892a4] hover:text-[#00d4ff] text-xs transition-all bg-[#0d1528]/50 hover:bg-[#00d4ff]/5"
+                    style={{ fontFamily: "'Share Tech Mono', monospace" }}>▸ {sym}</motion.button>
                 ))}
               </div>
-
-              <div className="grid grid-cols-2 gap-2 max-h-64 overflow-y-auto custom-scrollbar">
-                {filteredSymptoms.map((symptom) => (
-                  <motion.button
-                    key={symptom}
-                    whileHover={{ scale: 1.05 }}
-                    whileTap={{ scale: 0.95 }}
-                    onClick={() => toggleSymptom(symptom)}
-                    className="px-4 py-2 bg-slate-900/50 hover:bg-cyan-500/20 border border-cyan-500/30 hover:border-cyan-500/50 rounded-lg text-gray-300 hover:text-cyan-300 transition-all text-sm font-medium"
-                  >
-                    {symptom}
-                  </motion.button>
-                ))}
-              </div>
-
-              <motion.button
-                whileHover={{ scale: 1.02 }}
-                whileTap={{ scale: 0.98 }}
-                onClick={handleAnalyze}
-                disabled={selectedSymptoms.length === 0 || loading}
-                className="w-full mt-6 px-6 py-4 bg-gradient-to-r from-cyan-500 to-purple-500 rounded-xl text-white font-bold text-lg shadow-lg shadow-cyan-500/30 hover:shadow-cyan-500/50 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-              >
-                {loading ? (
-                  <>
-                    <Loader className="w-5 h-5 animate-spin" />
-                    Analyzing...
-                  </>
-                ) : (
-                  <>
-                    <Sparkles className="w-5 h-5" />
-                    Analyze Symptoms
-                  </>
-                )}
+              <motion.button whileHover={{ scale: 1.02, boxShadow: '0 0 25px rgba(0,212,255,0.35)' }} whileTap={{ scale: 0.98 }}
+                onClick={analyze} disabled={!selected.length || loading}
+                className="w-full py-4 font-black rounded-lg flex items-center justify-center gap-2 tracking-widest disabled:opacity-30"
+                style={{ fontFamily: "'Orbitron', sans-serif", background: 'linear-gradient(135deg,#00d4ff,#7c3aed)', color: '#050810' }}>
+                {loading ? <><Loader className="w-5 h-5 animate-spin text-white" /><span className="text-white">SCANNING...</span></> : <><Sparkles className="w-5 h-5" />RUN DIAGNOSTIC</>}
               </motion.button>
             </div>
           </motion.div>
 
-          <motion.div
-            initial={{ opacity: 0, x: 20 }}
-            animate={{ opacity: 1, x: 0 }}
-            className="space-y-6 max-h-[600px] overflow-y-auto custom-scrollbar pr-2"
-          >
-            <AnimatePresence mode="wait">
+          <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} className="space-y-4">
+            <AnimatePresence>
               {error && (
-                <motion.div
-                  initial={{ opacity: 0, y: -10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0 }}
-                  className="bg-red-500/10 backdrop-blur-xl border border-red-500/30 rounded-2xl p-4 shadow-lg"
-                >
-                  <div className="flex items-start gap-3">
-                    <AlertCircle className="w-5 h-5 text-red-400 flex-shrink-0 mt-0.5" />
-                    <div>
-                      <h3 className="font-semibold text-red-200 mb-1">Error</h3>
-                      <p className="text-red-100 text-sm">{error}</p>
-                    </div>
-                  </div>
+                <motion.div key="err" initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="p-4 border border-[#ff2d55]/40 rounded-xl bg-[#ff2d55]/10 flex items-start gap-3">
+                  <AlertCircle className="w-5 h-5 text-[#ff2d55] mt-0.5 flex-shrink-0" />
+                  <div><div className="text-[#ff2d55] font-bold text-sm mb-1" style={{ fontFamily: "'Orbitron', sans-serif" }}>SCAN_ERROR</div>
+                  <p className="text-[#ff2d55]/80 text-xs" style={{ fontFamily: "'Share Tech Mono', monospace" }}>{error}</p></div>
                 </motion.div>
               )}
+            </AnimatePresence>
+            <AnimatePresence mode="wait">
               {result ? (
-                <motion.div
-                  initial={{ opacity: 0, scale: 0.9 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  exit={{ opacity: 0, scale: 0.9 }}
-                  className="space-y-6"
-                >
-                  <div className="bg-slate-800/50 backdrop-blur-xl border border-cyan-500/20 rounded-2xl p-6 shadow-2xl shadow-cyan-500/10">
-                    <div className="flex items-center justify-between mb-6">
-                      <h2 className="text-2xl font-bold text-white">Analysis Results</h2>
-                      <div className={`px-4 py-2 bg-gradient-to-r ${getSeverityColor(result.severity)} rounded-full text-white font-semibold text-sm shadow-lg`}>
-                        {result.severity} Risk
-                      </div>
-                    </div>
-
-                    <div className="space-y-4">
-                      {result.diseases?.map((disease, index) => (
-                        <motion.div
-                          key={index}
-                          initial={{ opacity: 0, y: 20 }}
-                          animate={{ opacity: 1, y: 0 }}
-                          transition={{ delay: index * 0.1 }}
-                          className="p-4 bg-slate-900/50 border border-cyan-500/20 rounded-xl"
-                        >
-                          <div className="flex items-start justify-between mb-2">
-                            <h3 className="text-lg font-bold text-white">{disease.name}</h3>
-                            <div className="px-3 py-1 bg-cyan-500/20 rounded-full">
-                              <span className="text-cyan-300 font-semibold text-sm">{disease.confidence}%</span>
-                            </div>
-                          </div>
-                          <p className="text-gray-400 text-sm">{disease.description}</p>
-                          <div className="mt-3 w-full bg-slate-700/50 rounded-full h-2 overflow-hidden">
-                            <motion.div
-                              initial={{ width: 0 }}
-                              animate={{ width: `${disease.confidence}%` }}
-                              transition={{ delay: index * 0.1 + 0.3, duration: 0.5 }}
-                              className="h-full bg-gradient-to-r from-cyan-500 to-purple-500"
-                            />
-                          </div>
+                <motion.div key="res" initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0 }} className="space-y-4">
+                  <div className="relative p-4 border rounded-xl cc flex items-center justify-between" style={{ borderColor: `${s.c}40`, background: s.bg }}>
+                    <span style={{ fontFamily: "'Orbitron', sans-serif" }} className="font-black text-white">DIAGNOSIS COMPLETE</span>
+                    <span className="px-3 py-1 rounded-full text-xs font-black" style={{ fontFamily: "'Orbitron', sans-serif", background: s.c, color: '#050810' }}>{s.l}</span>
+                  </div>
+                  <div className="relative p-5 border border-[#00d4ff]/20 rounded-xl bg-[#0a0f1e]/80 cc space-y-3">
+                    <div className="text-[#00d4ff]/60 text-xs tracking-widest" style={{ fontFamily: "'Share Tech Mono', monospace" }}>// DETECTED_CONDITIONS</div>
+                    {result.diseases?.length > 0 ? result.diseases.map((d, i) => (
+                      <motion.div key={i} initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: i * 0.1 }} className="p-3 border border-[#00d4ff]/10 rounded-lg bg-[#0d1528]/60">
+                        <div className="flex items-center justify-between mb-2">
+                          <span className="text-white font-bold">{d.name}</span>
+                          <span className="text-xs font-black px-2 py-0.5 rounded" style={{ background: 'rgba(0,212,255,0.15)', color: '#00d4ff', fontFamily: "'Orbitron', sans-serif" }}>{Math.round(d.confidence * 100)}%</span>
+                        </div>
+                        <div className="h-1.5 bg-[#050810] rounded-full overflow-hidden">
+                          <motion.div className="h-full rounded-full" style={{ background: 'linear-gradient(90deg,#00d4ff,#7c3aed)' }} initial={{ width: 0 }} animate={{ width: `${d.confidence * 100}%` }} transition={{ delay: i * 0.1 + 0.3, duration: 0.6 }} />
+                        </div>
+                      </motion.div>
+                    )) : <p className="text-[#8892a4] text-sm" style={{ fontFamily: "'Share Tech Mono', monospace" }}>NO_CONDITIONS_DETECTED</p>}
+                  </div>
+                  {result.recommendations?.length > 0 && (
+                    <div className="relative p-5 border border-[#10b981]/20 rounded-xl bg-[#0a0f1e]/80 cc space-y-2">
+                      <div className="text-[#10b981]/60 text-xs tracking-widest mb-2" style={{ fontFamily: "'Share Tech Mono', monospace" }}>// RECOMMENDED_ACTIONS</div>
+                      {result.recommendations.map((r, i) => (
+                        <motion.div key={i} initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: i * 0.08 }} className="flex items-start gap-3 text-sm text-[#8892a4]">
+                          <CheckCircle className="w-4 h-4 text-[#10b981] flex-shrink-0 mt-0.5" />{r}
                         </motion.div>
                       ))}
                     </div>
-                  </div>
-
-                  <div className="bg-slate-800/50 backdrop-blur-xl border border-purple-500/20 rounded-2xl p-6 shadow-2xl shadow-purple-500/10">
-                    <h3 className="text-xl font-bold text-white mb-4 flex items-center gap-2">
-                      <AlertCircle className="w-5 h-5 text-purple-400" />
-                      Recommendations
-                    </h3>
-                    <p className="text-gray-300 leading-relaxed">{result.recommendations}</p>
-                  </div>
+                  )}
                 </motion.div>
               ) : (
-                <motion.div
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  className="bg-slate-800/30 backdrop-blur-xl border border-cyan-500/20 rounded-2xl p-12 text-center"
-                >
-                  <Sparkles className="w-16 h-16 text-cyan-400 mx-auto mb-4 opacity-50" />
-                  <p className="text-gray-400 text-lg">
-                    Select symptoms and click analyze to see results
-                  </p>
+                <motion.div key="idle" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="relative p-12 border border-[#00d4ff]/10 rounded-xl bg-[#0a0f1e]/50 text-center cc">
+                  <Sparkles className="w-14 h-14 mx-auto mb-4 text-[#00d4ff]/30" />
+                  <div style={{ fontFamily: "'Orbitron', sans-serif" }} className="text-[#8892a4] font-bold tracking-wide">AWAITING INPUT</div>
+                  <div className="text-[#8892a4]/50 text-xs mt-2" style={{ fontFamily: "'Share Tech Mono', monospace" }}>select symptoms → run diagnostic</div>
                 </motion.div>
               )}
             </AnimatePresence>
           </motion.div>
         </div>
       </div>
-
-      <style>{`
-        .custom-scrollbar::-webkit-scrollbar {
-          width: 6px;
-        }
-        .custom-scrollbar::-webkit-scrollbar-track {
-          background: rgba(15, 23, 42, 0.5);
-          border-radius: 10px;
-        }
-        .custom-scrollbar::-webkit-scrollbar-thumb {
-          background: rgba(6, 182, 212, 0.3);
-          border-radius: 10px;
-        }
-        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
-          background: rgba(6, 182, 212, 0.5);
-        }
-      `}</style>
     </div>
   );
 }
