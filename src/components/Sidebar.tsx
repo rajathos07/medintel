@@ -3,20 +3,23 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { NavLink, useNavigate } from 'react-router-dom';
 import {
   LayoutDashboard, Scan, Shield, Activity, User, LogOut,
-  Heart, Bell, Bot, AlertTriangle, ChevronRight, Menu
+  Heart, Bell, Bot, AlertTriangle, ChevronRight, ChevronLeft,
 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 
 const NAV = [
   { path: '/app/dashboard',         icon: LayoutDashboard, label: 'Dashboard',        accent: '#00e5ff' },
-  { path: '/app/disease-detection', icon: Scan,            label: 'Disease Scan',     accent: '#00e5ff' },
+  { path: '/app/disease-detection', icon: Scan,            label: 'Disease Detection',accent: '#00e5ff' },
   { path: '/app/risk-assessment',   icon: Shield,          label: 'Risk Assessment',  accent: '#a78bfa' },
-  { path: '/app/health-monitoring', icon: Activity,        label: 'Vitals Monitor',   accent: '#34d399' },
+  { path: '/app/health-monitoring', icon: Activity,        label: 'Health Monitoring',accent: '#34d399' },
   { path: '/app/reminders',         icon: Bell,            label: 'Reminders',        accent: '#fbbf24' },
-  { path: '/app/ai-companion',      icon: Bot,             label: 'CARE-AI',          accent: '#34d399' },
+  { path: '/app/ai-companion',      icon: Bot,             label: 'AI Companion',     accent: '#34d399' },
   { path: '/app/emergency',         icon: AlertTriangle,   label: 'Emergency SOS',    accent: '#f87171', pulse: true },
   { path: '/app/profile',           icon: User,            label: 'Profile',          accent: '#c084fc' },
 ];
+
+const EXPANDED_W  = 220;
+const COLLAPSED_W = 64;
 
 export default function Sidebar() {
   const [expanded, setExpanded] = useState(true);
@@ -31,175 +34,167 @@ export default function Sidebar() {
     <>
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=Syne:wght@700;800&display=swap');
-        .sidebar-root { font-family: 'DM Sans', sans-serif; }
-        .nav-link-pill { transition: background 0.2s, color 0.2s; }
-        .nav-link-pill:hover { background: rgba(0,229,255,0.07); }
-        .nav-link-pill.active-link { background: rgba(0,229,255,0.12); }
-        .bio-glow { filter: drop-shadow(0 0 6px currentColor); }
-        @keyframes sos-beat { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:0.6;transform:scale(1.2)} }
-        .sos-pulse { animation: sos-beat 1.2s ease-in-out infinite; }
+        .sb-root { font-family: 'DM Sans', sans-serif; }
+        .sb-item  { display:flex; align-items:center; gap:10px; padding:9px 10px; border-radius:12px; cursor:pointer; text-decoration:none; transition:background 0.18s; position:relative; }
+        .sb-item:hover { background: rgba(0,229,255,0.07); }
+        .sb-item.sb-active { background: rgba(0,229,255,0.11); }
+        .sb-nav::-webkit-scrollbar { display:none; }
+        .sb-nav { scrollbar-width:none; }
+        @keyframes sos-beat { 0%,100%{transform:scale(1);opacity:1} 50%{transform:scale(1.35);opacity:0.55} }
+        .sos-dot { animation: sos-beat 1.2s ease-in-out infinite; }
+        .sb-toggle { display:flex; align-items:center; justify-content:center; border-radius:9px; border:1px solid rgba(0,229,255,0.15); background:rgba(0,229,255,0.05); cursor:pointer; color:rgba(0,229,255,0.65); transition:background 0.18s,border-color 0.18s; flex-shrink:0; }
+        .sb-toggle:hover { background:rgba(0,229,255,0.12); border-color:rgba(0,229,255,0.35); }
       `}</style>
 
+      {/* Main sidebar */}
       <motion.aside
-        animate={{ width: expanded ? 220 : 68 }}
-        transition={{ type: 'spring', stiffness: 300, damping: 30 }}
-        className="sidebar-root h-screen fixed left-0 top-0 z-50 flex flex-col overflow-hidden"
+        className="sb-root"
+        animate={{ width: expanded ? EXPANDED_W : COLLAPSED_W }}
+        transition={{ type: 'spring', stiffness: 280, damping: 28 }}
         style={{
-          background: 'linear-gradient(180deg, #020d18 0%, #030f1c 60%, #020b14 100%)',
+          height: '100vh', position: 'fixed', left: 0, top: 0, zIndex: 50,
+          display: 'flex', flexDirection: 'column', overflow: 'hidden',
+          background: 'linear-gradient(180deg,#020d18 0%,#030f1c 60%,#020b14 100%)',
           borderRight: '1px solid rgba(0,229,255,0.08)',
-          boxShadow: '4px 0 40px rgba(0,0,0,0.6)',
+          boxShadow: '4px 0 40px rgba(0,0,0,0.55)',
         }}
       >
-        {/* Top — logo + toggle */}
-        <div className="flex items-center gap-3 px-3 py-4 shrink-0" style={{ borderBottom: '1px solid rgba(0,229,255,0.06)', minHeight: 64 }}>
-          {/* Logo icon */}
-          <motion.div
-            whileHover={{ scale: 1.05 }}
-            className="w-10 h-10 shrink-0 rounded-xl flex items-center justify-center cursor-pointer relative"
-            style={{ background: 'linear-gradient(135deg, #00e5ff22, #00e5ff11)', border: '1px solid rgba(0,229,255,0.25)' }}
-            onClick={() => navigate('/app/dashboard')}
-          >
-            <Heart className="w-5 h-5 bio-glow" style={{ color: '#00e5ff' }} />
-            <span className="absolute top-0.5 right-0.5 w-2 h-2 rounded-full bg-[#34d399]" style={{ boxShadow: '0 0 6px #34d399' }} />
+        {/* Header */}
+        <div style={{ display:'flex', alignItems:'center', gap:10, padding:'14px 12px', borderBottom:'1px solid rgba(0,229,255,0.06)', minHeight:64, flexShrink:0 }}>
+          {/* Logo */}
+          <motion.div whileHover={{ scale:1.05 }} whileTap={{ scale:0.95 }} onClick={() => navigate('/app/dashboard')}
+            style={{ width:38,height:38,flexShrink:0,borderRadius:11,background:'linear-gradient(135deg,rgba(0,229,255,0.18),rgba(0,229,255,0.07))',border:'1px solid rgba(0,229,255,0.28)',display:'flex',alignItems:'center',justifyContent:'center',cursor:'pointer',position:'relative' }}>
+            <Heart style={{ width:17,height:17,color:'#00e5ff',filter:'drop-shadow(0 0 6px #00e5ff)' }} />
+            <span style={{ position:'absolute',top:2,right:2,width:7,height:7,borderRadius:'50%',background:'#34d399',boxShadow:'0 0 6px #34d399' }} />
           </motion.div>
 
           <AnimatePresence>
             {expanded && (
-              <motion.div
-                initial={{ opacity: 0, x: -10 }}
-                animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: -10 }}
-                transition={{ duration: 0.15 }}
-                className="overflow-hidden"
-              >
-                <div style={{ fontFamily: "'Syne', sans-serif", fontSize: 15, fontWeight: 800, color: '#e0f7ff', letterSpacing: 1, whiteSpace: 'nowrap' }}>
-                  MEDI<span style={{ color: '#00e5ff' }}>INTEL</span>
+              <motion.div initial={{ opacity:0,x:-8 }} animate={{ opacity:1,x:0 }} exit={{ opacity:0,x:-8 }} transition={{ duration:0.13 }}
+                style={{ flex:1, minWidth:0, overflow:'hidden' }}>
+                <div style={{ fontFamily:"'Syne',sans-serif",fontSize:14,fontWeight:800,color:'#e0f7ff',letterSpacing:1,whiteSpace:'nowrap' }}>
+                  MEDI<span style={{ color:'#00e5ff' }}>INTEL</span>
                 </div>
-                <div style={{ fontSize: 9, color: 'rgba(0,229,255,0.45)', letterSpacing: '0.15em', fontFamily: 'monospace', whiteSpace: 'nowrap' }}>
+                <div style={{ fontSize:9,color:'rgba(0,229,255,0.4)',letterSpacing:'0.14em',fontFamily:'monospace',whiteSpace:'nowrap' }}>
                   HEALTH OS v2.4
                 </div>
               </motion.div>
             )}
           </AnimatePresence>
 
-          {/* Hamburger toggle */}
-          <motion.button
-            whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }}
+          {/* ── Toggle button: always rendered, always clickable ── */}
+          <button
+            className="sb-toggle"
+            style={{ width:30,height:30,marginLeft:'auto' }}
             onClick={() => setExpanded(v => !v)}
-            className="ml-auto w-8 h-8 shrink-0 flex items-center justify-center rounded-lg"
-            style={{ color: 'rgba(0,229,255,0.5)', background: 'rgba(0,229,255,0.04)' }}
+            title={expanded ? 'Collapse sidebar' : 'Expand sidebar'}
           >
-            <Menu className="w-4 h-4" />
-          </motion.button>
+            {expanded
+              ? <ChevronLeft  style={{ width:14,height:14 }} />
+              : <ChevronRight style={{ width:14,height:14 }} />
+            }
+          </button>
         </div>
 
-        {/* Nav */}
-        <nav className="flex-1 overflow-y-auto overflow-x-hidden py-3 px-2 space-y-0.5" style={{ scrollbarWidth: 'none' }}>
-          {NAV.map(({ path, icon: Icon, label, accent, pulse }) => (
-            <NavLink key={path} to={path}>
+        {/* Nav links */}
+        <nav className="sb-nav" style={{ flex:1, overflowY:'auto', padding:'10px 8px', display:'flex', flexDirection:'column', gap:2 }}>
+          {NAV.map(({ path, icon:Icon, label, accent, pulse }) => (
+            <NavLink key={path} to={path} style={{ textDecoration:'none' }}>
               {({ isActive }) => (
                 <motion.div
-                  whileHover={{ x: 2 }}
-                  className={`nav-link-pill flex items-center gap-3 px-2 py-2.5 rounded-xl cursor-pointer ${isActive ? 'active-link' : ''}`}
-                  style={{ position: 'relative' }}
+                  whileHover={{ x: expanded ? 2 : 0 }}
+                  className={`sb-item${isActive ? ' sb-active' : ''}`}
                   title={!expanded ? label : undefined}
+                  style={{ justifyContent: expanded ? 'flex-start' : 'center' }}
                 >
                   {/* Active bar */}
                   {isActive && (
-                    <motion.div
-                      layoutId="active-bar"
-                      className="absolute left-0 top-1/2 -translate-y-1/2 w-0.5 h-5 rounded-r-full"
-                      style={{ background: accent, boxShadow: `0 0 8px ${accent}` }}
-                    />
+                    <motion.span layoutId="sb-active-bar"
+                      style={{ position:'absolute',left:0,top:'50%',transform:'translateY(-50%)',width:3,height:20,borderRadius:'0 3px 3px 0',background:accent,boxShadow:`0 0 10px ${accent}` }} />
                   )}
 
                   {/* Icon */}
-                  <div className="w-8 h-8 shrink-0 flex items-center justify-center rounded-lg relative"
-                    style={{
-                      background: isActive ? `${accent}18` : 'transparent',
-                      border: isActive ? `1px solid ${accent}35` : '1px solid transparent',
-                    }}
-                  >
-                    <Icon className="w-4 h-4" style={{ color: isActive ? accent : 'rgba(148,163,184,0.7)' }} />
+                  <div style={{ width:32,height:32,flexShrink:0,borderRadius:9,display:'flex',alignItems:'center',justifyContent:'center',position:'relative',
+                    background: isActive ? `${accent}18` : 'transparent',
+                    border: isActive ? `1px solid ${accent}30` : '1px solid transparent',
+                    transition:'background 0.18s,border-color 0.18s' }}>
+                    <Icon style={{ width:16,height:16,color: isActive ? accent : 'rgba(148,163,184,0.65)' }} />
                     {pulse && (
-                      <span className="sos-pulse absolute -top-0.5 -right-0.5 w-2 h-2 rounded-full bg-[#f87171]"
-                        style={{ boxShadow: '0 0 6px #f87171' }} />
+                      <span className="sos-dot" style={{ position:'absolute',top:0,right:0,width:7,height:7,borderRadius:'50%',background:'#f87171',boxShadow:'0 0 6px #f87171' }} />
                     )}
                   </div>
 
                   {/* Label */}
                   <AnimatePresence>
                     {expanded && (
-                      <motion.span
-                        initial={{ opacity: 0, width: 0 }}
-                        animate={{ opacity: 1, width: 'auto' }}
-                        exit={{ opacity: 0, width: 0 }}
-                        transition={{ duration: 0.15 }}
-                        style={{
-                          fontSize: 13,
-                          fontWeight: isActive ? 600 : 400,
-                          color: isActive ? accent : 'rgba(148,163,184,0.85)',
-                          whiteSpace: 'nowrap',
-                          overflow: 'hidden',
-                        }}
-                      >
+                      <motion.span initial={{ opacity:0 }} animate={{ opacity:1 }} exit={{ opacity:0 }} transition={{ duration:0.12 }}
+                        style={{ fontSize:13,fontWeight:isActive?600:400,color:isActive?accent:'rgba(148,163,184,0.8)',whiteSpace:'nowrap',flex:1 }}>
                         {label}
                       </motion.span>
                     )}
                   </AnimatePresence>
 
-                  {/* Chevron only when expanded + active */}
-                  {expanded && isActive && (
-                    <ChevronRight className="w-3 h-3 ml-auto shrink-0" style={{ color: accent }} />
-                  )}
+                  {expanded && isActive && <ChevronRight style={{ width:11,height:11,color:`${accent}70`,flexShrink:0 }} />}
                 </motion.div>
               )}
             </NavLink>
           ))}
         </nav>
 
-        {/* Bottom — user + logout */}
-        <div className="px-2 py-3 shrink-0" style={{ borderTop: '1px solid rgba(0,229,255,0.06)' }}>
-          {/* User chip */}
-          <div className="flex items-center gap-2 px-2 py-2 rounded-xl mb-1"
-            style={{ background: 'rgba(0,229,255,0.04)', border: '1px solid rgba(0,229,255,0.07)' }}>
-            <div className="w-7 h-7 shrink-0 rounded-full flex items-center justify-center text-xs font-bold"
-              style={{ background: 'linear-gradient(135deg,#00e5ff,#34d399)', color: '#020d18' }}>
+        {/* Bottom: user + logout */}
+        <div style={{ padding:'10px 8px', borderTop:'1px solid rgba(0,229,255,0.06)', flexShrink:0 }}>
+          <div style={{ display:'flex',alignItems:'center',gap:8,padding:'8px 10px',borderRadius:12,marginBottom:4,
+            background:'rgba(0,229,255,0.04)',border:'1px solid rgba(0,229,255,0.07)',
+            justifyContent: expanded ? 'flex-start' : 'center', overflow:'hidden' }}>
+            <div style={{ width:26,height:26,flexShrink:0,borderRadius:'50%',background:'linear-gradient(135deg,#00e5ff,#34d399)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:11,fontWeight:700,color:'#020d18' }}>
               {(profile?.full_name || 'U')[0].toUpperCase()}
             </div>
             <AnimatePresence>
               {expanded && (
-                <motion.div
-                  initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-                  className="overflow-hidden min-w-0"
-                >
-                  <div style={{ fontSize: 11, color: '#94a3b8', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                    {profile?.full_name || 'User'}
-                  </div>
-                </motion.div>
+                <motion.span initial={{ opacity:0 }} animate={{ opacity:1 }} exit={{ opacity:0 }}
+                  style={{ fontSize:11,color:'#94a3b8',whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis' }}>
+                  {profile?.full_name || 'Loading...'}
+                </motion.span>
               )}
             </AnimatePresence>
           </div>
 
-          <motion.button
-            whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.97 }}
-            onClick={handleLogout}
-            className="w-full flex items-center gap-3 px-2 py-2 rounded-xl transition-all"
-            style={{ color: 'rgba(248,113,113,0.7)' }}
-            title={!expanded ? 'Logout' : undefined}
-          >
-            <LogOut className="w-4 h-4 shrink-0" />
+          <button onClick={handleLogout} title={!expanded ? 'Log out' : undefined}
+            style={{ width:'100%',display:'flex',alignItems:'center',gap:8,padding:'8px 10px',borderRadius:12,background:'transparent',border:'none',color:'rgba(248,113,113,0.7)',cursor:'pointer',justifyContent:expanded?'flex-start':'center' }}>
+            <LogOut style={{ width:15,height:15,flexShrink:0 }} />
             <AnimatePresence>
               {expanded && (
-                <motion.span initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-                  style={{ fontSize: 12, whiteSpace: 'nowrap' }}>
-                  Log out
-                </motion.span>
+                <motion.span initial={{ opacity:0 }} animate={{ opacity:1 }} exit={{ opacity:0 }}
+                  style={{ fontSize:12,whiteSpace:'nowrap' }}>Log out</motion.span>
               )}
             </AnimatePresence>
-          </motion.button>
+          </button>
         </div>
       </motion.aside>
+
+      {/* ── Edge expand tab (shown only when collapsed) ──────────────────
+          Provides a large, easy-to-click target to re-expand the sidebar
+          even if the user misses the small chevron inside it.           */}
+      <AnimatePresence>
+        {!expanded && (
+          <motion.button
+            key="edge-tab"
+            initial={{ opacity:0,x:-6 }} animate={{ opacity:1,x:0 }} exit={{ opacity:0,x:-6 }}
+            transition={{ duration:0.2 }}
+            onClick={() => setExpanded(true)}
+            title="Expand sidebar"
+            style={{
+              position:'fixed', left:COLLAPSED_W, top:'50%', transform:'translateY(-50%)',
+              zIndex:49, width:18, height:52, borderRadius:'0 10px 10px 0',
+              background:'rgba(0,229,255,0.1)', border:'1px solid rgba(0,229,255,0.22)',
+              borderLeft:'none', display:'flex', alignItems:'center', justifyContent:'center',
+              cursor:'pointer', color:'rgba(0,229,255,0.7)',
+            }}
+          >
+            <ChevronRight style={{ width:11,height:11 }} />
+          </motion.button>
+        )}
+      </AnimatePresence>
     </>
   );
 }

@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
-import { Activity, Heart, Droplet, Thermometer, Wind, TrendingUp, Zap, Award, ChevronRight } from 'lucide-react';
+import { Activity, Heart, Droplet, Thermometer, Wind, TrendingUp, Zap, ChevronRight } from 'lucide-react';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { healthApi } from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
@@ -26,7 +26,7 @@ const BIO_STYLES = `
 export default function Dashboard() {
   const [records, setRecords] = useState<HealthRecord[]>([]);
   const [loading, setLoading] = useState(true);
-  const { profile } = useAuth();
+  const { profile, user } = useAuth();
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -62,9 +62,9 @@ export default function Dashboard() {
 
       {/* Header */}
       <motion.div initial={{ opacity: 0, y: -16 }} animate={{ opacity: 1, y: 0 }} style={{ marginBottom: 32 }}>
-        <div style={{ fontFamily: "'Azeret Mono', monospace", fontSize: 10, letterSpacing: '0.2em', color: 'rgba(0,229,255,0.45)', marginBottom: 6 }}>// COMMAND_CENTER</div>
+        <div style={{ fontFamily: "'Azeret Mono', monospace", fontSize: 10, letterSpacing: '0.2em', color: 'rgba(0,229,255,0.45)', marginBottom: 6 }}>// HEALTH OVERVIEW</div>
         <h1 style={{ fontFamily: "'Syne', sans-serif", fontWeight: 900, fontSize: 32, letterSpacing: -0.5, color: '#f0faff', lineHeight: 1.1 }}>
-          Welcome back, <span style={{ color: '#00e5ff' }}>{profile?.full_name?.split(' ')[0] || 'Player'}</span>
+          Welcome back, <span style={{ color: '#00e5ff' }}>{profile?.full_name?.split(' ')[0] || 'there'}</span>
         </h1>
         <p style={{ fontSize: 13, color: 'rgba(148,163,184,0.6)', marginTop: 4 }}>
           {new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}
@@ -131,22 +131,22 @@ export default function Dashboard() {
           )}
         </motion.div>
 
-        {/* Achievements */}
+        {/* Health Summary */}
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.52 }} className="bio-card" style={{ padding: 24 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 20 }}>
-            <Award style={{ width: 16, height: 16, color: '#fbbf24' }} />
-            <span style={{ fontFamily: "'Syne', sans-serif", fontWeight: 700, fontSize: 14, color: '#e0f7ff' }}>Milestones</span>
+            <Activity style={{ width: 16, height: 16, color: '#34d399' }} />
+            <span style={{ fontFamily: "'Syne', sans-serif", fontWeight: 700, fontSize: 14, color: '#e0f7ff' }}>Health Summary</span>
           </div>
           {[
-            { label: 'First Record Logged',  done: records.length > 0, xp: '+150 XP' },
-            { label: '7-Day Tracking Streak',done: records.length >= 7, xp: '+300 XP' },
-            { label: 'AI Scan Completed',    done: false,               xp: '+200 XP' },
-            { label: 'Risk Assessment Done', done: false,               xp: '+250 XP' },
+            { label: 'First Record Logged',   done: records.length > 0,  status: records.length > 0 ? 'Complete' : 'Pending' },
+            { label: '7-Day Tracking Active', done: records.length >= 7,  status: records.length >= 7 ? 'Complete' : 'Pending' },
+            { label: 'AI Scan Performed',     done: false,                status: 'Pending' },
+            { label: 'Risk Assessment Done',  done: false,                status: 'Pending' },
           ].map((a, i) => (
-            <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '11px 14px', borderRadius: 12, marginBottom: 8, background: a.done ? 'rgba(251,191,36,0.06)' : 'rgba(255,255,255,0.02)', border: `1px solid ${a.done ? 'rgba(251,191,36,0.2)' : 'rgba(255,255,255,0.04)'}`, opacity: a.done ? 1 : 0.5 }}>
-              <span style={{ fontSize: 16 }}>{a.done ? '✓' : '○'}</span>
+            <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '11px 14px', borderRadius: 12, marginBottom: 8, background: a.done ? 'rgba(52,211,153,0.06)' : 'rgba(255,255,255,0.02)', border: `1px solid ${a.done ? 'rgba(52,211,153,0.2)' : 'rgba(255,255,255,0.04)'}`, opacity: a.done ? 1 : 0.55 }}>
+              <span style={{ fontSize: 16, color: a.done ? '#34d399' : 'rgba(148,163,184,0.4)' }}>{a.done ? '✓' : '○'}</span>
               <span style={{ flex: 1, fontSize: 12, color: a.done ? '#e0f7ff' : 'rgba(148,163,184,0.6)' }}>{a.label}</span>
-              <span style={{ fontSize: 10, fontFamily: "'Azeret Mono', monospace", color: '#fbbf24' }}>{a.xp}</span>
+              <span style={{ fontSize: 10, fontFamily: "'Azeret Mono', monospace", color: a.done ? '#34d399' : 'rgba(148,163,184,0.4)' }}>{a.status}</span>
             </div>
           ))}
         </motion.div>
@@ -154,7 +154,7 @@ export default function Dashboard() {
 
       {/* Quick actions */}
       <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.6 }}>
-        <div style={{ fontFamily: "'Azeret Mono', monospace", fontSize: 10, letterSpacing: '0.2em', color: 'rgba(0,229,255,0.4)', marginBottom: 14 }}>// QUICK_ACTIONS</div>
+        <div style={{ fontFamily: "'Azeret Mono', monospace", fontSize: 10, letterSpacing: '0.2em', color: 'rgba(0,229,255,0.4)', marginBottom: 14 }}>// QUICK ACTIONS</div>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12 }}>
           {quickActions.map((a, i) => (
             <motion.button key={i} whileHover={{ scale: 1.03, y: -2 }} whileTap={{ scale: 0.97 }}

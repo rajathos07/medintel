@@ -1,89 +1,186 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Bell, Plus, Trash2, Clock, Pill, Droplets, Dumbbell, Calendar, CheckCircle, XCircle, RefreshCw } from 'lucide-react';
+import { Bell, Plus, Trash2, Clock, Pill, Droplets, Dumbbell, Calendar,
+         CheckCircle, XCircle, RefreshCw, BellRing, X } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 
-const SHARED = `@import url('https://fonts.googleapis.com/css2?family=Rajdhani:wght@300;400;500;600;700&family=Orbitron:wght@400;700;900&family=Share+Tech+Mono&display=swap');
-.gbg{background-image:linear-gradient(rgba(0,212,255,0.03) 1px,transparent 1px),linear-gradient(90deg,rgba(0,212,255,0.03) 1px,transparent 1px);background-size:60px 60px;}
-.scan{background:repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,212,255,0.02) 2px,rgba(0,212,255,0.02) 4px);}
-.cc::before,.cc::after{content:'';position:absolute;width:12px;height:12px;border-color:#00d4ff;border-style:solid;}
-.cc::before{top:0;left:0;border-width:2px 0 0 2px;} .cc::after{bottom:0;right:0;border-width:0 2px 2px 0;}
-.inp:focus{box-shadow:0 0 0 1px #00d4ff,0 0 15px rgba(0,212,255,0.2);outline:none;}
-.card-hover:hover{box-shadow:0 0 25px rgba(0,212,255,0.12),inset 0 0 25px rgba(0,212,255,0.03);}
-@keyframes blink{0%,100%{opacity:1}50%{opacity:0.3}}
-.blink{animation:blink 2s ease-in-out infinite;}`;
-
+/* ─── Types ──────────────────────────────────────────────────────────── */
 type ReminderType = 'medication' | 'hydration' | 'exercise' | 'appointment';
 
 interface Reminder {
-  id: string;
-  user_id: string;
-  type: ReminderType;
-  message: string;
-  scheduled_time: string;
-  is_recurring: boolean;
-  recurrence_rule: string;
-  is_completed: boolean;
-  created_at: string;
+  id: string; user_id: string; type: ReminderType; message: string;
+  scheduled_time: string; is_recurring: boolean; recurrence_rule: string;
+  is_completed: boolean; created_at: string;
 }
 
-const TYPE_CONFIG: Record<ReminderType, { icon: any; color: string; label: string; bg: string }> = {
-  medication: { icon: Pill, color: '#ff2d55', label: 'MEDICATION', bg: 'rgba(255,45,85,0.08)' },
-  hydration:  { icon: Droplets, color: '#00d4ff', label: 'HYDRATION', bg: 'rgba(0,212,255,0.08)' },
-  exercise:   { icon: Dumbbell, color: '#10b981', label: 'EXERCISE', bg: 'rgba(16,185,129,0.08)' },
-  appointment:{ icon: Calendar, color: '#f59e0b', label: 'APPOINTMENT', bg: 'rgba(245,158,11,0.08)' },
+interface ToastItem { id: string; reminder: Reminder; }
+
+/* ─── Config ─────────────────────────────────────────────────────────── */
+const TYPE_CFG: Record<ReminderType, { icon: any; color: string; label: string; bg: string }> = {
+  medication:  { icon: Pill,      color: '#f87171', label: 'Medication',   bg: 'rgba(248,113,113,0.09)' },
+  hydration:   { icon: Droplets,  color: '#00e5ff', label: 'Hydration',    bg: 'rgba(0,229,255,0.08)'  },
+  exercise:    { icon: Dumbbell,  color: '#34d399', label: 'Exercise',     bg: 'rgba(52,211,153,0.08)' },
+  appointment: { icon: Calendar,  color: '#fbbf24', label: 'Appointment',  bg: 'rgba(251,191,36,0.08)' },
 };
 
-const SAMPLE_REMINDERS = [
-  { type: 'medication' as ReminderType, message: 'Blood pressure medication - Amlodipine 5mg', time: '08:00' },
-  { type: 'hydration'  as ReminderType, message: 'Drink a full glass of water', time: '10:00' },
-  { type: 'exercise'   as ReminderType, message: '15-minute gentle morning walk', time: '09:00' },
-  { type: 'appointment'as ReminderType, message: 'Cardiology check-up at City Hospital', time: '14:30' },
+const SAMPLES = [
+  { type: 'medication'  as ReminderType, message: 'Blood pressure medication — Amlodipine 5mg', time: '08:00' },
+  { type: 'hydration'   as ReminderType, message: 'Drink a full glass of water',                 time: '10:00' },
+  { type: 'exercise'    as ReminderType, message: '15-minute gentle morning walk',               time: '09:00' },
+  { type: 'appointment' as ReminderType, message: 'Cardiology check-up at City Hospital',        time: '14:30' },
 ];
 
-export default function Reminders() {
-  const { user } = useAuth();
-  const [reminders, setReminders] = useState<Reminder[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [showForm, setShowForm] = useState(false);
-  const [saving, setSaving] = useState(false);
-  const [filter, setFilter] = useState<ReminderType | 'all'>('all');
-  const [form, setForm] = useState({
-    type: 'medication' as ReminderType,
-    message: '',
-    scheduled_time: '',
-    is_recurring: false,
-    recurrence_rule: 'daily',
-  });
+const STYLES = `
+  @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=Syne:wght@700;800&family=Azeret+Mono:wght@400;500&display=swap');
+  .rem-grid { background-image:linear-gradient(rgba(0,229,255,0.025) 1px,transparent 1px),linear-gradient(90deg,rgba(0,229,255,0.025) 1px,transparent 1px); background-size:48px 48px; }
+  .rem-card { background:linear-gradient(135deg,rgba(2,20,35,0.92),rgba(3,15,28,0.96)); border-radius:16px; transition:border-color 0.25s,box-shadow 0.25s; }
+  .rem-input { width:100%; padding:11px 14px; background:rgba(3,15,28,0.85); border:1px solid rgba(0,229,255,0.13); border-radius:11px; color:#e0f7ff; font-family:'DM Sans',sans-serif; font-size:13px; outline:none; transition:border-color 0.2s,box-shadow 0.2s; box-sizing:border-box; }
+  .rem-input:focus { border-color:rgba(0,229,255,0.4); box-shadow:0 0 0 3px rgba(0,229,255,0.06); }
+  .rem-input::placeholder { color:rgba(148,163,184,0.35); }
+  .rem-select { appearance:none; }
+  .rem-btn-primary { background:linear-gradient(135deg,#00c8e8,#0284c7); color:#020d18; font-family:'Syne',sans-serif; font-weight:800; font-size:12px; letter-spacing:0.07em; border:none; border-radius:11px; padding:11px 22px; cursor:pointer; transition:box-shadow 0.2s,transform 0.15s; }
+  .rem-btn-primary:hover { box-shadow:0 0 30px rgba(0,200,232,0.4); transform:translateY(-1px); }
+  .rem-btn-primary:disabled { opacity:0.45; cursor:not-allowed; transform:none; }
+  .rem-btn-ghost  { background:transparent; color:rgba(148,163,184,0.7); font-family:'Syne',sans-serif; font-weight:700; font-size:12px; letter-spacing:0.07em; border:1px solid rgba(255,255,255,0.1); border-radius:11px; padding:11px 22px; cursor:pointer; transition:border-color 0.2s,color 0.2s; }
+  .rem-btn-ghost:hover  { border-color:rgba(255,255,255,0.25); color:#e0f7ff; }
+  @keyframes spin { to{transform:rotate(360deg)} }
+  @keyframes toast-in { from{opacity:0;transform:translateX(100%)} to{opacity:1;transform:translateX(0)} }
+  @keyframes toast-out { from{opacity:1;transform:translateX(0)} to{opacity:0;transform:translateX(110%)} }
+  .toast-in  { animation:toast-in  0.35s cubic-bezier(0.34,1.56,0.64,1) forwards; }
+  .toast-out { animation:toast-out 0.3s  ease-in forwards; }
+`;
 
-  useEffect(() => { if (user) fetchReminders(); }, [user]);
+/* ─── Notification toast component ──────────────────────────────────── */
+function ReminderToast({ item, onDismiss }: { item: ToastItem; onDismiss: (id: string) => void }) {
+  const cfg = TYPE_CFG[item.reminder.type];
+  const Icon = cfg.icon;
+  const [leaving, setLeaving] = useState(false);
 
-  const fetchReminders = async () => {
-    setLoading(true);
-    const { data, error } = await supabase
-      .from('reminders')
-      .select('*')
-      .eq('user_id', user!.id)
-      .order('scheduled_time', { ascending: true });
-    if (!error && data) setReminders(data);
-    setLoading(false);
+  const dismiss = () => {
+    setLeaving(true);
+    setTimeout(() => onDismiss(item.id), 300);
   };
 
+  // Auto-dismiss after 10 seconds
+  useEffect(() => {
+    const t = setTimeout(dismiss, 10000);
+    return () => clearTimeout(t);
+  }, []);
+
+  return (
+    <div className={leaving ? 'toast-out' : 'toast-in'}
+      style={{ display:'flex', alignItems:'flex-start', gap:12, padding:'14px 16px', borderRadius:14,
+        background:'linear-gradient(135deg,rgba(2,20,35,0.98),rgba(3,15,28,0.99))',
+        border:`1px solid ${cfg.color}35`, boxShadow:`0 8px 40px rgba(0,0,0,0.6),0 0 20px ${cfg.color}15`,
+        minWidth:300, maxWidth:360, position:'relative' }}>
+      <div style={{ width:38,height:38,flexShrink:0,borderRadius:10,background:cfg.bg,border:`1px solid ${cfg.color}30`,display:'flex',alignItems:'center',justifyContent:'center' }}>
+        <Icon style={{ width:18,height:18,color:cfg.color,filter:`drop-shadow(0 0 6px ${cfg.color})` }} />
+      </div>
+      <div style={{ flex:1, minWidth:0 }}>
+        <div style={{ fontSize:10,color:`${cfg.color}90`,letterSpacing:'0.12em',fontFamily:"'Azeret Mono',monospace",marginBottom:3 }}>
+          {cfg.label.toUpperCase()} REMINDER
+        </div>
+        <div style={{ fontSize:13,color:'#e0f7ff',fontWeight:500,lineHeight:1.4 }}>{item.reminder.message}</div>
+        <div style={{ fontSize:11,color:'rgba(148,163,184,0.55)',marginTop:4,fontFamily:"'Azeret Mono',monospace" }}>
+          Scheduled: {item.reminder.scheduled_time}
+        </div>
+      </div>
+      <button onClick={dismiss} style={{ background:'none',border:'none',color:'rgba(148,163,184,0.4)',cursor:'pointer',padding:2,flexShrink:0 }}>
+        <X style={{ width:13,height:13 }} />
+      </button>
+    </div>
+  );
+}
+
+/* ─── Main component ─────────────────────────────────────────────────── */
+export default function Reminders() {
+  const { user } = useAuth();
+  const [reminders, setReminders]   = useState<Reminder[]>([]);
+  const [loading, setLoading]       = useState(true);
+  const [showForm, setShowForm]     = useState(false);
+  const [saving, setSaving]         = useState(false);
+  const [filter, setFilter]         = useState<ReminderType | 'all'>('all');
+  const [toasts, setToasts]         = useState<ToastItem[]>([]);
+  const [notifPerm, setNotifPerm]   = useState<NotificationPermission>('default');
+  const firedRef                    = useRef<Set<string>>(new Set()); // track already-fired "key"
+
+  const [form, setForm] = useState({
+    type: 'medication' as ReminderType, message: '', scheduled_time: '',
+    is_recurring: false, recurrence_rule: 'daily',
+  });
+
+  /* ── Fetch reminders ─────────────────────────────────────────────── */
+  const fetchReminders = useCallback(async () => {
+    if (!user) return;
+    setLoading(true);
+    const { data, error } = await supabase.from('reminders').select('*')
+      .eq('user_id', user.id).order('scheduled_time', { ascending: true });
+    if (!error && data) setReminders(data);
+    setLoading(false);
+  }, [user]);
+
+  useEffect(() => { fetchReminders(); }, [fetchReminders]);
+
+  /* ── Request notification permission on mount ────────────────────── */
+  useEffect(() => {
+    if ('Notification' in window) {
+      setNotifPerm(Notification.permission);
+      if (Notification.permission === 'default') {
+        Notification.requestPermission().then(p => setNotifPerm(p));
+      }
+    }
+  }, []);
+
+  /* ── Time-based reminder checker (runs every 30 seconds) ─────────── */
+  useEffect(() => {
+    const check = () => {
+      const now = new Date();
+      const hh  = now.getHours().toString().padStart(2, '0');
+      const mm  = now.getMinutes().toString().padStart(2, '0');
+      const nowStr = `${hh}:${mm}`;  // "HH:MM"
+
+      reminders.forEach(r => {
+        if (r.is_completed) return;
+
+        // scheduled_time may be "HH:MM" or "HH:MM:SS" — normalise to "HH:MM"
+        const rTime = r.scheduled_time?.slice(0, 5);
+        if (rTime !== nowStr) return;
+
+        // Key = id + date so recurring reminders fire once per day
+        const dateKey = now.toDateString();
+        const fireKey = `${r.id}-${dateKey}`;
+        if (firedRef.current.has(fireKey)) return;
+        firedRef.current.add(fireKey);
+
+        // 1. In-app toast
+        const toastId = `${r.id}-${Date.now()}`;
+        setToasts(prev => [...prev, { id: toastId, reminder: r }]);
+
+        // 2. Browser push notification (if granted)
+        if ('Notification' in window && Notification.permission === 'granted') {
+          const cfg = TYPE_CFG[r.type];
+          new Notification(`⏰ ${cfg.label} Reminder`, {
+            body: r.message,
+            icon: '/favicon.ico',
+            tag: fireKey,   // prevents duplicate OS notifications
+          });
+        }
+      });
+    };
+
+    check(); // run immediately
+    const interval = setInterval(check, 30_000); // re-check every 30 s
+    return () => clearInterval(interval);
+  }, [reminders]);
+
+  /* ── CRUD ────────────────────────────────────────────────────────── */
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!form.message || !form.scheduled_time) return;
     setSaving(true);
-    const { error } = await supabase.from('reminders').insert([{
-      user_id: user!.id,
-      ...form,
-      is_completed: false,
-    }]);
-    if (!error) {
-      await fetchReminders();
-      setShowForm(false);
-      setForm({ type: 'medication', message: '', scheduled_time: '', is_recurring: false, recurrence_rule: 'daily' });
-    }
+    const { error } = await supabase.from('reminders').insert([{ user_id: user!.id, ...form, is_completed: false }]);
+    if (!error) { await fetchReminders(); setShowForm(false); setForm({ type:'medication', message:'', scheduled_time:'', is_recurring:false, recurrence_rule:'daily' }); }
     setSaving(false);
   };
 
@@ -97,92 +194,104 @@ export default function Reminders() {
     setReminders(prev => prev.filter(r => r.id !== id));
   };
 
-  const filtered = filter === 'all' ? reminders : reminders.filter(r => r.type === filter);
+  const dismissToast = (id: string) => setToasts(prev => prev.filter(t => t.id !== id));
+
+  const filtered  = filter === 'all' ? reminders : reminders.filter(r => r.type === filter);
   const completed = reminders.filter(r => r.is_completed).length;
-  const pending = reminders.filter(r => !r.is_completed).length;
+  const pending   = reminders.filter(r => !r.is_completed).length;
 
   return (
-    <div style={{ fontFamily: "'Rajdhani', sans-serif" }} className="min-h-screen bg-[#050810] text-white">
-      <style>{SHARED}</style>
-      <div className="fixed inset-0 gbg scan pointer-events-none" />
-      <div className="fixed top-0 left-0 w-[500px] h-[500px] rounded-full pointer-events-none" style={{ background: 'radial-gradient(circle, rgba(0,212,255,0.05) 0%, transparent 70%)', transform: 'translate(-30%, -30%)' }} />
+    <div style={{ fontFamily:"'DM Sans',sans-serif", minHeight:'100vh', background:'#020d18', color:'#e0f7ff', padding:'28px 32px', position:'relative' }}>
+      <style>{STYLES}</style>
+      <div className="rem-grid" style={{ position:'fixed', inset:0, pointerEvents:'none' }} />
 
-      <div className="relative z-10 max-w-4xl mx-auto p-6 space-y-6">
+      {/* ── Toast portal (top-right) ─────────────────────────────────── */}
+      <div style={{ position:'fixed', top:20, right:20, zIndex:9999, display:'flex', flexDirection:'column', gap:10 }}>
+        {toasts.map(t => (
+          <ReminderToast key={t.id} item={t} onDismiss={dismissToast} />
+        ))}
+      </div>
+
+      <div style={{ position:'relative', zIndex:1, maxWidth:860, margin:'0 auto' }}>
 
         {/* Header */}
-        <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} className="text-center py-4">
-          <div className="text-[#00d4ff]/60 text-xs tracking-widest mb-2" style={{ fontFamily: "'Share Tech Mono', monospace" }}>// CARE_SCHEDULER</div>
-          <h1 style={{ fontFamily: "'Orbitron', sans-serif" }} className="text-4xl font-black text-white">
-            SMART <span className="text-transparent bg-clip-text" style={{ backgroundImage: 'linear-gradient(135deg,#00d4ff,#7c3aed)' }}>REMINDERS</span>
+        <motion.div initial={{ opacity:0, y:-14 }} animate={{ opacity:1, y:0 }} style={{ marginBottom:28 }}>
+          <div style={{ fontFamily:"'Azeret Mono',monospace", fontSize:10, letterSpacing:'0.22em', color:'rgba(0,229,255,0.45)', marginBottom:8 }}>// CARE SCHEDULER</div>
+          <h1 style={{ fontFamily:"'Syne',sans-serif", fontWeight:900, fontSize:32, letterSpacing:-0.5, color:'#f0faff', lineHeight:1.1, marginBottom:6 }}>
+            Health Reminders
           </h1>
-          <p className="text-[#8892a4] text-sm mt-2 tracking-wide" style={{ fontFamily: "'Share Tech Mono', monospace" }}>
+          <p style={{ fontSize:13, color:'rgba(148,163,184,0.55)' }}>
             Medication · Hydration · Exercise · Appointments
           </p>
+
+          {/* Notification permission banner */}
+          {notifPerm === 'denied' && (
+            <div style={{ marginTop:14, padding:'10px 16px', borderRadius:10, background:'rgba(248,113,113,0.08)', border:'1px solid rgba(248,113,113,0.2)', fontSize:12, color:'rgba(248,113,113,0.8)', fontFamily:"'Azeret Mono',monospace" }}>
+              ⚠ Browser notifications are blocked. Enable them in site settings to receive reminder alerts.
+            </div>
+          )}
+          {notifPerm === 'default' && (
+            <button onClick={() => Notification.requestPermission().then(p => setNotifPerm(p))}
+              style={{ marginTop:12, padding:'8px 16px', borderRadius:10, background:'rgba(251,191,36,0.08)', border:'1px solid rgba(251,191,36,0.25)', fontSize:12, color:'#fbbf24', cursor:'pointer', fontFamily:"'Azeret Mono',monospace", display:'flex', alignItems:'center', gap:6 }}>
+              <BellRing style={{ width:13, height:13 }} /> Enable notifications for reminders
+            </button>
+          )}
         </motion.div>
 
-        {/* Stats Row */}
-        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} className="grid grid-cols-4 gap-3">
+        {/* Stats */}
+        <motion.div initial={{ opacity:0, y:16 }} animate={{ opacity:1, y:0 }} transition={{ delay:0.08 }}
+          style={{ display:'grid', gridTemplateColumns:'repeat(4,1fr)', gap:12, marginBottom:24 }}>
           {[
-            { label: 'TOTAL', value: reminders.length, color: '#00d4ff' },
-            { label: 'PENDING', value: pending, color: '#f59e0b' },
-            { label: 'DONE', value: completed, color: '#10b981' },
-            { label: 'RECURRING', value: reminders.filter(r => r.is_recurring).length, color: '#7c3aed' },
-          ].map((s, i) => (
-            <div key={i} className="relative p-4 border border-[#00d4ff]/15 rounded-xl bg-[#0a0f1e]/80 text-center cc card-hover transition-all">
-              <div style={{ fontFamily: "'Orbitron', sans-serif", color: s.color }} className="text-2xl font-black">{s.value}</div>
-              <div className="text-[10px] text-[#8892a4] tracking-widest mt-1" style={{ fontFamily: "'Share Tech Mono', monospace" }}>{s.label}</div>
+            { label:'Total',     value:reminders.length,                              color:'#00e5ff' },
+            { label:'Pending',   value:pending,                                        color:'#fbbf24' },
+            { label:'Completed', value:completed,                                      color:'#34d399' },
+            { label:'Recurring', value:reminders.filter(r => r.is_recurring).length,  color:'#a78bfa' },
+          ].map((s,i) => (
+            <div key={i} className="rem-card" style={{ padding:'16px 18px', border:'1px solid rgba(0,229,255,0.09)', textAlign:'center' }}>
+              <div style={{ fontFamily:"'Syne',sans-serif", fontWeight:800, fontSize:28, color:s.color, lineHeight:1 }}>{s.value}</div>
+              <div style={{ fontSize:10, color:'rgba(148,163,184,0.55)', marginTop:5, letterSpacing:'0.1em', fontFamily:"'Azeret Mono',monospace" }}>{s.label.toUpperCase()}</div>
             </div>
           ))}
         </motion.div>
 
-        {/* Filter + Add Button */}
-        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.15 }} className="flex flex-wrap items-center justify-between gap-3">
-          <div className="flex gap-2 flex-wrap">
-            {(['all', 'medication', 'hydration', 'exercise', 'appointment'] as const).map(f => (
+        {/* Filter + Add */}
+        <div style={{ display:'flex', flexWrap:'wrap', alignItems:'center', justifyContent:'space-between', gap:12, marginBottom:20 }}>
+          <div style={{ display:'flex', gap:8, flexWrap:'wrap' }}>
+            {(['all','medication','hydration','exercise','appointment'] as const).map(f => (
               <button key={f} onClick={() => setFilter(f)}
-                className="px-3 py-1.5 text-xs rounded-lg border transition-all tracking-widest"
-                style={{
-                  fontFamily: "'Share Tech Mono', monospace",
-                  borderColor: filter === f ? '#00d4ff' : 'rgba(0,212,255,0.15)',
-                  background: filter === f ? 'rgba(0,212,255,0.12)' : 'transparent',
-                  color: filter === f ? '#00d4ff' : '#8892a4',
-                }}>
-                {f.toUpperCase()}
+                style={{ padding:'7px 14px', borderRadius:9, border:`1px solid ${filter===f ? '#00e5ff' : 'rgba(0,229,255,0.15)'}`, background:filter===f ? 'rgba(0,229,255,0.11)' : 'transparent', color:filter===f ? '#00e5ff' : 'rgba(148,163,184,0.65)', fontSize:11, fontFamily:"'Azeret Mono',monospace", letterSpacing:'0.1em', cursor:'pointer', transition:'all 0.18s', textTransform:'uppercase' }}>
+                {f}
               </button>
             ))}
           </div>
-          <motion.button whileHover={{ scale: 1.04, boxShadow: '0 0 20px rgba(0,212,255,0.4)' }} whileTap={{ scale: 0.96 }}
-            onClick={() => setShowForm(!showForm)}
-            className="flex items-center gap-2 px-5 py-2.5 text-sm font-black rounded-lg tracking-widest"
-            style={{ fontFamily: "'Orbitron', sans-serif", background: 'linear-gradient(135deg,#00d4ff,#7c3aed)', color: '#050810' }}>
-            <Plus className="w-4 h-4" /> [ADD]
+          <motion.button whileHover={{ scale:1.04 }} whileTap={{ scale:0.96 }}
+            onClick={() => setShowForm(v => !v)}
+            className="rem-btn-primary"
+            style={{ display:'flex', alignItems:'center', gap:6 }}>
+            <Plus style={{ width:14,height:14 }} /> Add Reminder
           </motion.button>
-        </motion.div>
+        </div>
 
-        {/* Add Form */}
+        {/* Add form */}
         <AnimatePresence>
           {showForm && (
-            <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }}
-              className="relative p-6 border border-[#00d4ff]/25 rounded-xl bg-[#0a0f1e]/90 cc overflow-hidden">
-              <div className="text-[#00d4ff]/60 text-xs tracking-widest mb-4" style={{ fontFamily: "'Share Tech Mono', monospace" }}>// NEW_REMINDER</div>
-              <form onSubmit={handleSubmit} className="space-y-4">
-                {/* Type Selector */}
-                <div>
-                  <label className="block text-xs text-[#00d4ff]/70 mb-2 tracking-widest" style={{ fontFamily: "'Share Tech Mono', monospace" }}>REMINDER_TYPE</label>
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
-                    {(Object.keys(TYPE_CONFIG) as ReminderType[]).map(t => {
-                      const cfg = TYPE_CONFIG[t];
+            <motion.div initial={{ opacity:0, height:0 }} animate={{ opacity:1, height:'auto' }} exit={{ opacity:0, height:0 }}
+              className="rem-card" style={{ border:'1px solid rgba(0,229,255,0.18)', padding:24, marginBottom:20, overflow:'hidden' }}>
+              <div style={{ fontFamily:"'Azeret Mono',monospace", fontSize:10, letterSpacing:'0.2em', color:'rgba(0,229,255,0.45)', marginBottom:16 }}>// NEW REMINDER</div>
+              <form onSubmit={handleSubmit}>
+
+                {/* Type selector */}
+                <div style={{ marginBottom:16 }}>
+                  <label style={{ display:'block', fontSize:11, color:'rgba(0,229,255,0.55)', letterSpacing:'0.15em', fontFamily:"'Azeret Mono',monospace", marginBottom:8 }}>TYPE</label>
+                  <div style={{ display:'grid', gridTemplateColumns:'repeat(4,1fr)', gap:8 }}>
+                    {(Object.keys(TYPE_CFG) as ReminderType[]).map(t => {
+                      const cfg = TYPE_CFG[t];
                       const Icon = cfg.icon;
+                      const sel = form.type === t;
                       return (
-                        <button key={t} type="button" onClick={() => setForm({ ...form, type: t })}
-                          className="flex items-center gap-2 p-3 rounded-lg border text-sm transition-all"
-                          style={{
-                            borderColor: form.type === t ? cfg.color : 'rgba(255,255,255,0.08)',
-                            background: form.type === t ? cfg.bg : 'transparent',
-                            color: form.type === t ? cfg.color : '#8892a4',
-                            fontFamily: "'Share Tech Mono', monospace",
-                          }}>
-                          <Icon className="w-4 h-4" /> {cfg.label}
+                        <button key={t} type="button" onClick={() => setForm({ ...form, type:t })}
+                          style={{ display:'flex', alignItems:'center', gap:7, padding:'10px 12px', borderRadius:10, border:`1px solid ${sel ? cfg.color : 'rgba(255,255,255,0.07)'}`, background:sel ? cfg.bg : 'transparent', color:sel ? cfg.color : 'rgba(148,163,184,0.6)', fontSize:12, cursor:'pointer', transition:'all 0.18s', fontFamily:"'DM Sans',sans-serif", fontWeight:sel?600:400 }}>
+                          <Icon style={{ width:14,height:14 }} /> {cfg.label}
                         </button>
                       );
                     })}
@@ -190,79 +299,58 @@ export default function Reminders() {
                 </div>
 
                 {/* Message */}
-                <div>
-                  <label className="block text-xs text-[#00d4ff]/70 mb-1.5 tracking-widest" style={{ fontFamily: "'Share Tech Mono', monospace" }}>MESSAGE</label>
-                  <input type="text" value={form.message} onChange={e => setForm({ ...form, message: e.target.value })}
-                    placeholder="e.g. Take Metformin 500mg with breakfast"
-                    className="inp w-full px-4 py-3 bg-[#0d1528] border border-[#00d4ff]/20 rounded-lg text-white text-sm transition-all"
-                    style={{ fontFamily: "'Share Tech Mono', monospace" }} />
+                <div style={{ marginBottom:16 }}>
+                  <label style={{ display:'block', fontSize:11, color:'rgba(0,229,255,0.55)', letterSpacing:'0.15em', fontFamily:"'Azeret Mono',monospace", marginBottom:7 }}>MESSAGE</label>
+                  <input className="rem-input" type="text" value={form.message} onChange={e => setForm({ ...form, message:e.target.value })} placeholder="e.g. Take Metformin 500mg with breakfast" />
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {/* Time */}
+                <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:14, marginBottom:18 }}>
                   <div>
-                    <label className="block text-xs text-[#00d4ff]/70 mb-1.5 tracking-widest" style={{ fontFamily: "'Share Tech Mono', monospace" }}>SCHEDULED_TIME</label>
-                    <input type="time" value={form.scheduled_time} onChange={e => setForm({ ...form, scheduled_time: e.target.value })}
-                      className="inp w-full px-4 py-3 bg-[#0d1528] border border-[#00d4ff]/20 rounded-lg text-white text-sm transition-all"
-                      style={{ fontFamily: "'Share Tech Mono', monospace", colorScheme: 'dark' }} />
+                    <label style={{ display:'block', fontSize:11, color:'rgba(0,229,255,0.55)', letterSpacing:'0.15em', fontFamily:"'Azeret Mono',monospace", marginBottom:7 }}>TIME</label>
+                    <input className="rem-input" type="time" value={form.scheduled_time} onChange={e => setForm({ ...form, scheduled_time:e.target.value })} style={{ colorScheme:'dark' }} />
                   </div>
-
-                  {/* Recurrence */}
                   <div>
-                    <label className="block text-xs text-[#00d4ff]/70 mb-1.5 tracking-widest" style={{ fontFamily: "'Share Tech Mono', monospace" }}>RECURRENCE</label>
-                    <select value={form.is_recurring ? form.recurrence_rule : 'none'}
-                      onChange={e => {
-                        const val = e.target.value;
-                        setForm({ ...form, is_recurring: val !== 'none', recurrence_rule: val === 'none' ? 'daily' : val });
-                      }}
-                      className="inp w-full px-4 py-3 bg-[#0d1528] border border-[#00d4ff]/20 rounded-lg text-white text-sm transition-all"
-                      style={{ fontFamily: "'Share Tech Mono', monospace" }}>
-                      <option value="none">ONE_TIME</option>
-                      <option value="daily">DAILY</option>
-                      <option value="weekly">WEEKLY</option>
+                    <label style={{ display:'block', fontSize:11, color:'rgba(0,229,255,0.55)', letterSpacing:'0.15em', fontFamily:"'Azeret Mono',monospace", marginBottom:7 }}>RECURRENCE</label>
+                    <select className="rem-input rem-select" value={form.is_recurring ? form.recurrence_rule : 'none'}
+                      onChange={e => { const v=e.target.value; setForm({ ...form, is_recurring:v!=='none', recurrence_rule:v==='none'?'daily':v }); }}>
+                      <option value="none">One-time</option>
+                      <option value="daily">Daily</option>
+                      <option value="weekly">Weekly</option>
                     </select>
                   </div>
                 </div>
 
-                <div className="flex gap-3 pt-2 border-t border-[#00d4ff]/10">
-                  <motion.button whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} type="submit" disabled={saving}
-                    className="px-6 py-2.5 font-black text-sm rounded-lg tracking-widest disabled:opacity-50"
-                    style={{ fontFamily: "'Orbitron', sans-serif", background: 'linear-gradient(135deg,#00d4ff,#7c3aed)', color: '#050810' }}>
-                    {saving ? '[SAVING...]' : '[DEPLOY]'}
-                  </motion.button>
-                  <motion.button whileHover={{ scale: 1.02 }} type="button" onClick={() => setShowForm(false)}
-                    className="px-6 py-2.5 font-black text-sm rounded-lg border border-[#00d4ff]/20 text-[#8892a4] hover:text-white transition-all tracking-widest"
-                    style={{ fontFamily: "'Orbitron', sans-serif" }}>[CANCEL]</motion.button>
+                <div style={{ display:'flex', gap:10, borderTop:'1px solid rgba(0,229,255,0.08)', paddingTop:16 }}>
+                  <button type="submit" disabled={saving} className="rem-btn-primary">{saving ? 'Saving...' : 'Save Reminder'}</button>
+                  <button type="button" className="rem-btn-ghost" onClick={() => setShowForm(false)}>Cancel</button>
                 </div>
               </form>
             </motion.div>
           )}
         </AnimatePresence>
 
-        {/* Quick Add Templates */}
+        {/* Quick-start templates */}
         {!showForm && reminders.length === 0 && !loading && (
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="p-5 border border-[#00d4ff]/10 rounded-xl bg-[#0a0f1e]/60">
-            <div className="text-xs text-[#00d4ff]/60 mb-3 tracking-widest" style={{ fontFamily: "'Share Tech Mono', monospace" }}>// QUICK_START_TEMPLATES</div>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-              {SAMPLE_REMINDERS.map((s, i) => {
-                const cfg = TYPE_CONFIG[s.type];
-                const Icon = cfg.icon;
+          <motion.div initial={{ opacity:0 }} animate={{ opacity:1 }}
+            className="rem-card" style={{ border:'1px solid rgba(0,229,255,0.08)', padding:20, marginBottom:20 }}>
+            <div style={{ fontFamily:"'Azeret Mono',monospace", fontSize:10, letterSpacing:'0.2em', color:'rgba(0,229,255,0.4)', marginBottom:12 }}>// QUICK START TEMPLATES</div>
+            <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:8 }}>
+              {SAMPLES.map((s, i) => {
+                const cfg = TYPE_CFG[s.type]; const Icon = cfg.icon;
                 return (
-                  <motion.button key={i} whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}
+                  <motion.button key={i} whileHover={{ scale:1.02 }} whileTap={{ scale:0.98 }}
                     onClick={async () => {
                       setSaving(true);
-                      await supabase.from('reminders').insert([{ user_id: user!.id, type: s.type, message: s.message, scheduled_time: s.time, is_recurring: true, recurrence_rule: 'daily', is_completed: false }]);
-                      await fetchReminders();
-                      setSaving(false);
+                      await supabase.from('reminders').insert([{ user_id:user!.id, type:s.type, message:s.message, scheduled_time:s.time, is_recurring:true, recurrence_rule:'daily', is_completed:false }]);
+                      await fetchReminders(); setSaving(false);
                     }}
-                    className="flex items-center gap-3 p-3 rounded-lg border text-left transition-all"
-                    style={{ borderColor: `${cfg.color}25`, background: cfg.bg }}>
-                    <Icon className="w-4 h-4 shrink-0" style={{ color: cfg.color }} />
+                    style={{ display:'flex', alignItems:'center', gap:10, padding:'12px 14px', borderRadius:12, border:`1px solid ${cfg.color}22`, background:cfg.bg, cursor:'pointer', textAlign:'left' }}>
+                    <Icon style={{ width:15,height:15,flexShrink:0,color:cfg.color }} />
                     <div>
-                      <div className="text-xs font-bold" style={{ color: cfg.color, fontFamily: "'Share Tech Mono', monospace" }}>{cfg.label}</div>
-                      <div className="text-xs text-[#8892a4]">{s.message}</div>
+                      <div style={{ fontSize:10,color:cfg.color,fontFamily:"'Azeret Mono',monospace",letterSpacing:'0.1em',marginBottom:2 }}>{cfg.label.toUpperCase()}</div>
+                      <div style={{ fontSize:12,color:'rgba(148,163,184,0.7)' }}>{s.message}</div>
                     </div>
-                    <Plus className="w-3 h-3 ml-auto shrink-0 text-[#8892a4]" />
+                    <Plus style={{ width:12,height:12,marginLeft:'auto',flexShrink:0,color:'rgba(148,163,184,0.4)' }} />
                   </motion.button>
                 );
               })}
@@ -270,60 +358,55 @@ export default function Reminders() {
           </motion.div>
         )}
 
-        {/* Reminder List */}
+        {/* Reminder list */}
         {loading ? (
-          <div className="flex justify-center py-16">
-            <div className="w-10 h-10 border-2 border-[#00d4ff] border-t-transparent rounded-full animate-spin" />
+          <div style={{ textAlign:'center', padding:'48px 0' }}>
+            <div style={{ width:34,height:34,border:'2px solid rgba(0,229,255,0.25)',borderTopColor:'#00e5ff',borderRadius:'50%',animation:'spin 0.8s linear infinite',margin:'0 auto' }} />
           </div>
         ) : (
-          <div className="space-y-3">
+          <div style={{ display:'flex', flexDirection:'column', gap:10 }}>
             <AnimatePresence>
               {filtered.map((r, i) => {
-                const cfg = TYPE_CONFIG[r.type];
-                const Icon = cfg.icon;
+                const cfg = TYPE_CFG[r.type]; const Icon = cfg.icon;
                 return (
-                  <motion.div key={r.id} initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 20 }}
-                    transition={{ delay: i * 0.05 }}
-                    className={`relative p-5 border rounded-xl bg-[#0a0f1e]/80 card-hover transition-all ${r.is_completed ? 'opacity-50' : ''}`}
-                    style={{ borderColor: r.is_completed ? 'rgba(255,255,255,0.06)' : `${cfg.color}25` }}>
-                    <div className="flex items-center gap-4">
-                      {/* Type Icon */}
-                      <div className="w-12 h-12 rounded-xl flex items-center justify-center shrink-0" style={{ background: cfg.bg, border: `1px solid ${cfg.color}30` }}>
-                        <Icon className="w-6 h-6" style={{ color: cfg.color }} />
+                  <motion.div key={r.id} initial={{ opacity:0, x:-18 }} animate={{ opacity:1, x:0 }} exit={{ opacity:0, x:20 }} transition={{ delay:i*0.04 }}
+                    className="rem-card"
+                    style={{ border:`1px solid ${r.is_completed ? 'rgba(255,255,255,0.05)' : cfg.color+'28'}`, padding:'18px 20px', opacity:r.is_completed ? 0.55 : 1 }}>
+                    <div style={{ display:'flex', alignItems:'center', gap:14 }}>
+                      <div style={{ width:44,height:44,flexShrink:0,borderRadius:12,background:cfg.bg,border:`1px solid ${cfg.color}28`,display:'flex',alignItems:'center',justifyContent:'center' }}>
+                        <Icon style={{ width:20,height:20,color:cfg.color,filter:`drop-shadow(0 0 5px ${cfg.color})` }} />
                       </div>
 
-                      {/* Content */}
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2 mb-1">
-                          <span className="text-xs font-bold tracking-widest" style={{ color: cfg.color, fontFamily: "'Share Tech Mono', monospace" }}>{cfg.label}</span>
+                      <div style={{ flex:1, minWidth:0 }}>
+                        <div style={{ display:'flex', alignItems:'center', gap:7, marginBottom:5, flexWrap:'wrap' }}>
+                          <span style={{ fontSize:10,color:`${cfg.color}90`,fontFamily:"'Azeret Mono',monospace",letterSpacing:'0.12em' }}>{cfg.label.toUpperCase()}</span>
                           {r.is_recurring && (
-                            <span className="flex items-center gap-1 text-[10px] px-2 py-0.5 rounded border" style={{ color: '#7c3aed', borderColor: 'rgba(124,58,237,0.3)', background: 'rgba(124,58,237,0.08)', fontFamily: "'Share Tech Mono', monospace" }}>
-                              <RefreshCw className="w-2.5 h-2.5" />{r.recurrence_rule?.toUpperCase()}
+                            <span style={{ display:'flex',alignItems:'center',gap:4,fontSize:10,padding:'2px 7px',borderRadius:6,border:'1px solid rgba(167,139,250,0.28)',background:'rgba(167,139,250,0.07)',color:'#a78bfa',fontFamily:"'Azeret Mono',monospace" }}>
+                              <RefreshCw style={{ width:9,height:9 }} />{r.recurrence_rule?.charAt(0).toUpperCase()+r.recurrence_rule?.slice(1)}
                             </span>
                           )}
                           {r.is_completed && (
-                            <span className="text-[10px] px-2 py-0.5 rounded border" style={{ color: '#10b981', borderColor: 'rgba(16,185,129,0.3)', background: 'rgba(16,185,129,0.08)', fontFamily: "'Share Tech Mono', monospace" }}>DONE</span>
+                            <span style={{ fontSize:10,padding:'2px 7px',borderRadius:6,border:'1px solid rgba(52,211,153,0.28)',background:'rgba(52,211,153,0.07)',color:'#34d399',fontFamily:"'Azeret Mono',monospace" }}>Done</span>
                           )}
                         </div>
-                        <p className={`text-sm font-semibold ${r.is_completed ? 'line-through text-[#8892a4]' : 'text-white'}`}>
-                          {r.message}
-                        </p>
-                        <div className="flex items-center gap-1 mt-1 text-[#8892a4]" style={{ fontFamily: "'Share Tech Mono', monospace" }}>
-                          <Clock className="w-3 h-3" />
-                          <span className="text-xs">{r.scheduled_time}</span>
+                        <p style={{ fontSize:14,fontWeight:500,color:r.is_completed?'rgba(148,163,184,0.55)':'#e0f7ff',margin:0,textDecoration:r.is_completed?'line-through':'none' }}>{r.message}</p>
+                        <div style={{ display:'flex',alignItems:'center',gap:5,marginTop:5,color:'rgba(148,163,184,0.45)',fontFamily:"'Azeret Mono',monospace",fontSize:11 }}>
+                          <Clock style={{ width:11,height:11 }} />{r.scheduled_time?.slice(0,5)}
                         </div>
                       </div>
 
-                      {/* Actions */}
-                      <div className="flex items-center gap-2 shrink-0">
-                        <motion.button whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }} onClick={() => toggleComplete(r.id, r.is_completed)}
-                          className="w-9 h-9 rounded-lg flex items-center justify-center border transition-all"
-                          style={{ borderColor: r.is_completed ? 'rgba(16,185,129,0.3)' : 'rgba(255,255,255,0.1)', background: r.is_completed ? 'rgba(16,185,129,0.1)' : 'transparent' }}>
-                          {r.is_completed ? <CheckCircle className="w-5 h-5 text-[#10b981]" /> : <XCircle className="w-5 h-5 text-[#8892a4]" />}
+                      <div style={{ display:'flex',gap:7,flexShrink:0 }}>
+                        <motion.button whileHover={{ scale:1.1 }} whileTap={{ scale:0.9 }}
+                          onClick={() => toggleComplete(r.id, r.is_completed)}
+                          style={{ width:34,height:34,borderRadius:9,display:'flex',alignItems:'center',justifyContent:'center',border:`1px solid ${r.is_completed?'rgba(52,211,153,0.3)':'rgba(255,255,255,0.1)'}`,background:r.is_completed?'rgba(52,211,153,0.1)':'transparent',cursor:'pointer' }}>
+                          {r.is_completed
+                            ? <CheckCircle style={{ width:17,height:17,color:'#34d399' }} />
+                            : <XCircle    style={{ width:17,height:17,color:'rgba(148,163,184,0.5)' }} />}
                         </motion.button>
-                        <motion.button whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }} onClick={() => deleteReminder(r.id)}
-                          className="w-9 h-9 rounded-lg flex items-center justify-center border border-[#ff2d55]/20 hover:border-[#ff2d55]/50 hover:bg-[#ff2d55]/10 transition-all">
-                          <Trash2 className="w-4 h-4 text-[#ff2d55]" />
+                        <motion.button whileHover={{ scale:1.1 }} whileTap={{ scale:0.9 }}
+                          onClick={() => deleteReminder(r.id)}
+                          style={{ width:34,height:34,borderRadius:9,display:'flex',alignItems:'center',justifyContent:'center',border:'1px solid rgba(248,113,113,0.2)',background:'transparent',cursor:'pointer' }}>
+                          <Trash2 style={{ width:15,height:15,color:'rgba(248,113,113,0.7)' }} />
                         </motion.button>
                       </div>
                     </div>
@@ -333,10 +416,10 @@ export default function Reminders() {
             </AnimatePresence>
 
             {filtered.length === 0 && !loading && (
-              <div className="text-center py-16 text-[#8892a4]">
-                <Bell className="w-12 h-12 mx-auto mb-3 opacity-20" />
-                <p style={{ fontFamily: "'Share Tech Mono', monospace" }} className="text-sm">NO_REMINDERS_FOUND</p>
-                <p className="text-xs mt-1">Click [ADD] to schedule your first reminder</p>
+              <div style={{ textAlign:'center', padding:'52px 0', color:'rgba(148,163,184,0.4)' }}>
+                <Bell style={{ width:40,height:40,margin:'0 auto 12px',opacity:0.2 }} />
+                <p style={{ fontFamily:"'Azeret Mono',monospace", fontSize:12 }}>No reminders found</p>
+                <p style={{ fontSize:12, marginTop:4 }}>Click "Add Reminder" to get started</p>
               </div>
             )}
           </div>

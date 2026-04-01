@@ -1,10 +1,22 @@
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Plus, Edit2, Trash2, Save, X, Heart, Activity, Thermometer, Wind, Droplet, TrendingUp } from 'lucide-react';
-import { healthApi } from '../services/api';
+import { Plus, Edit2, Trash2, Save, X, Heart, Activity, Thermometer, Wind, Droplet, TrendingUp, AlertCircle, CheckCircle, Loader } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
+import { supabase } from '../lib/supabase';
 
-interface HealthRecord { id: string; user_id: string; heart_rate: number|null; blood_pressure: string|null; temperature: number|null; oxygen_level: number|null; glucose: number|null; weight: number|null; notes: string|null; recorded_at: string; }
+interface HealthRecord { 
+  id: string; 
+  user_id: string; 
+  heart_rate: number|null; 
+  blood_pressure: string|null; 
+  temperature: number|null; 
+  oxygen_level: number|null; 
+  glucose: number|null; 
+  weight: number|null; 
+  notes: string|null; 
+  recorded_at: string; 
+  created_at?: string;
+}
 
 const STYLE = `@import url('https://fonts.googleapis.com/css2?family=Rajdhani:wght@300;400;500;600;700&family=Orbitron:wght@400;700;900&family=Share+Tech+Mono&display=swap');
 .gbg{background-image:linear-gradient(rgba(16,185,129,0.03) 1px,transparent 1px),linear-gradient(90deg,rgba(16,185,129,0.03) 1px,transparent 1px);background-size:60px 60px;}
@@ -16,37 +28,156 @@ export default function HealthMonitoring() {
   const { user } = useAuth();
   const [records, setRecords] = useState<HealthRecord[]>([]);
   const [loading, setLoading] = useState(true);
+  const [submitting, setSubmitting] = useState(false);
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState<string|null>(null);
-  const [form, setForm] = useState({ heart_rate:'', blood_pressure:'', temperature:'', oxygen_level:'', glucose:'', weight:'', notes:'' });
+  const [error, setError] = useState<string>('');
+  const [success, setSuccess] = useState<string>('');
+  const [form, setForm] = useState({ 
+    heart_rate:'', 
+    blood_pressure:'', 
+    temperature:'', 
+    oxygen_level:'', 
+    glucose:'', 
+    weight:'', 
+    notes:'' 
+  });
 
-  useEffect(() => { if (user) load(); }, [user]);
+  useEffect(() => { 
+    if (user?.id) {
+      load(); 
+    }
+  }, [user?.id]);
 
   const load = async () => {
+    if (!user?.id) return;
+    
     setLoading(true);
-    try { setRecords(await healthApi.getAll(user?.id) || []); }
-    catch(e) { console.error(e); }
-    finally { setLoading(false); }
+    setError('');
+    try { 
+      const { data, error: fetchError } = await supabase
+        .from('health_records')
+        .select('*')
+        .eq('user_id', user.id)
+        .order('recorded_at', { ascending: false });
+      
+      if (fetchError) {
+        throw new Error(fetchError.message);
+      }
+      
+      setRecords(data || []); 
+    }
+    catch(e) { 
+      const errMsg = e instanceof Error ? e.message : 'Failed to load records';
+      setError(`⚠️ ${errMsg}`);
+      console.error('Load error:', e); 
+    }
+    finally { 
+      setLoading(false); 
+    }
   };
 
-  const reset = () => { setForm({ heart_rate:'', blood_pressure:'', temperature:'', oxygen_level:'', glucose:'', weight:'', notes:'' }); setEditingId(null); setShowForm(false); };
+  const reset = () => { 
+    setForm({ heart_rate:'', blood_pressure:'', temperature:'', oxygen_level:'', glucose:'', weight:'', notes:'' }); 
+    setEditingId(null); 
+    setShowForm(false);
+    setError('');
+  };
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const d: Record<string,unknown> = {};
-    if (form.heart_rate) d.heart_rate = parseInt(form.heart_rate);
-    if (form.blood_pressure) d.blood_pressure = form.blood_pressure;
-    if (form.temperature) d.temperature = parseFloat(form.temperature);
-    if (form.oxygen_level) d.oxygen_level = parseInt(form.oxygen_level);
-    if (form.glucose) d.glucose = parseInt(form.glucose);
-    if (form.weight) d.weight = parseFloat(form.weight);
-    if (form.notes) d.notes = form.notes;
+    if (!user?.id) {
+      setError('⚠️ User not authenticated');
+      return;
+    }
+
+    setError('');
+    setSuccess('');
+    setSubmitting(true);
+    
+    // Validate at least one field is filled
+    if (!form.heart_rate && !form.blood_pressure && !form.temperature && !form.oxygen_level && !form.glucose && !form.weight) {
+      setError('⚠️ Please enter at least one vital sign');
+      setSubmitting(false);
+      return;
+    }
+
+    const recordData = {
+      user_id: user.id,
+      heart_rate: form.heart_rate ? parseInt(form.heart_rate) : null,
+      blood_pressure: form.blood_pressure || null,
+      temperature: form.temperature ? parseFloat(form.temperature) : null,
+      oxygen_level: form.oxygen_level ? parseInt(form.oxygen_level) : null,
+      glucose: form.glucose ? parseInt(form.glucose) : null,
+      weight: form.weight ? parseFloat(form.weight) : null,
+      notes: form.notes || null,
+      recorded_at: new Date().toISOString()
+    };
+    
     try {
-      if (!user) throw new Error('Not authenticated');
-      if (editingId) await healthApi.update(editingId, d);
-      else await healthApi.create(user.id, d);
-      await load(); reset();
-    } catch(e) { console.error(e); }
+      if (editingId) {
+        // Update existing record
+        const { error: updateError } = await supabase
+          .from('health_records')
+          .update(recordData)
+          .eq('id', editingId)
+          .eq('user_id', user.id);
+        
+        if (updateError) throw new Error(updateError.message);
+        setSuccess('✓ Record updated successfully!');
+      } else {
+        // Create new record
+        const { error: insertError } = await supabase
+          .from('health_records')
+          .insert([recordData]);
+        
+        if (insertError) throw new Error(insertError.message);
+        setSuccess('✓ Record saved successfully!');
+      }
+      
+      await load(); 
+      reset();
+      
+      // Clear success message after 2 seconds
+      setTimeout(() => setSuccess(''), 2000);
+    } catch(e) { 
+      const errMsg = e instanceof Error ? e.message : 'Failed to save record';
+      setError(`✗ ${errMsg}`);
+      console.error('Submit error:', e); 
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleDelete = async (id: string) => {
+    if (!user?.id) {
+      setError('⚠️ User not authenticated');
+      return;
+    }
+
+    if (!confirm('Are you sure? This cannot be undone.')) return;
+    
+    setError('');
+    setSubmitting(true);
+    
+    try {
+      const { error: deleteError } = await supabase
+        .from('health_records')
+        .delete()
+        .eq('id', id)
+        .eq('user_id', user.id);
+      
+      if (deleteError) throw new Error(deleteError.message);
+      
+      setSuccess('✓ Record deleted successfully!');
+      await load();
+      setTimeout(() => setSuccess(''), 2000);
+    } catch(e) {
+      const errMsg = e instanceof Error ? e.message : 'Failed to delete';
+      setError(`✗ ${errMsg}`);
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   const vitals = [
@@ -57,6 +188,17 @@ export default function HealthMonitoring() {
     { key: 'glucose', label: 'GLUCOSE', unit: 'mg/dL', icon: Droplet, color: '#a855f7', type: 'number', ph: '90' },
     { key: 'weight', label: 'WEIGHT', unit: 'kg', icon: TrendingUp, color: '#ec4899', type: 'number', ph: '70.5' },
   ];
+
+  if (!user?.id) {
+    return (
+      <div style={{ fontFamily: "'Rajdhani', sans-serif" }} className="min-h-screen bg-[#050810] text-white flex items-center justify-center">
+        <div className="text-center">
+          <AlertCircle className="w-12 h-12 text-[#ff2d55] mx-auto mb-4" />
+          <p className="text-lg">Please log in to access Health Monitoring</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div style={{ fontFamily: "'Rajdhani', sans-serif" }} className="min-h-screen bg-[#050810] text-white">
@@ -70,13 +212,34 @@ export default function HealthMonitoring() {
             <div className="text-[#10b981]/60 text-xs tracking-widest mb-1" style={{ fontFamily: "'Share Tech Mono', monospace" }}>// VITALS_TRACKER</div>
             <h1 style={{ fontFamily: "'Orbitron', sans-serif" }} className="text-4xl font-black text-white">HEALTH <span className="text-transparent bg-clip-text" style={{ backgroundImage: 'linear-gradient(135deg,#10b981,#00d4ff)' }}>MONITOR</span></h1>
           </div>
-          <motion.button whileHover={{ scale: 1.05, boxShadow: '0 0 20px rgba(16,185,129,0.4)' }} whileTap={{ scale: 0.95 }}
+          <motion.button 
+            whileHover={{ scale: 1.05, boxShadow: '0 0 20px rgba(16,185,129,0.4)' }} 
+            whileTap={{ scale: 0.95 }}
             onClick={() => setShowForm(!showForm)}
-            className="px-5 py-2.5 font-black text-sm rounded-lg flex items-center gap-2 tracking-widest"
+            disabled={submitting}
+            className="px-5 py-2.5 font-black text-sm rounded-lg flex items-center gap-2 tracking-widest disabled:opacity-50"
             style={{ fontFamily: "'Orbitron', sans-serif", background: showForm ? '#1a2540' : 'linear-gradient(135deg,#10b981,#00d4ff)', color: showForm ? '#8892a4' : '#050810', border: showForm ? '1px solid rgba(16,185,129,0.3)' : 'none' }}>
             {showForm ? <><X className="w-4 h-4" />[CANCEL]</> : <><Plus className="w-4 h-4" />[ADD_RECORD]</>}
           </motion.button>
         </motion.div>
+
+        {/* Error message */}
+        {error && (
+          <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} 
+            className="p-4 rounded-lg border border-[#ff2d55]/30 bg-[#ff2d55]/10 flex items-center gap-3">
+            <AlertCircle className="w-5 h-5 text-[#ff2d55] flex-shrink-0" />
+            <div className="text-sm text-[#ff2d55]">{error}</div>
+          </motion.div>
+        )}
+
+        {/* Success message */}
+        {success && (
+          <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}
+            className="p-4 rounded-lg border border-[#10b981]/30 bg-[#10b981]/10 flex items-center gap-3">
+            <CheckCircle className="w-5 h-5 text-[#10b981] flex-shrink-0" />
+            <div className="text-sm text-[#10b981]">{success}</div>
+          </motion.div>
+        )}
 
         {/* Form */}
         {showForm && (
@@ -89,29 +252,54 @@ export default function HealthMonitoring() {
                     <label className="flex items-center gap-1.5 text-xs mb-1.5 tracking-widest" style={{ color: `${v.color}80`, fontFamily: "'Share Tech Mono', monospace" }}>
                       <v.icon className="w-3 h-3" style={{ color: v.color }} />{v.label} ({v.unit})
                     </label>
-                    <input type={v.type} step={v.key === 'temperature' || v.key === 'weight' ? '0.1' : undefined}
-                      value={(form as any)[v.key]} onChange={e => setForm({ ...form, [v.key]: e.target.value })}
+                    <input 
+                      type={v.type} 
+                      step={v.key === 'temperature' || v.key === 'weight' ? '0.1' : undefined}
+                      value={(form as any)[v.key]} 
+                      onChange={e => setForm({ ...form, [v.key]: e.target.value })}
                       placeholder={v.ph}
-                      className="inp w-full px-3 py-2.5 bg-[#0d1528] border rounded-lg text-white placeholder-[#8892a4]/40 focus:outline-none text-sm transition-all"
-                      style={{ borderColor: `${v.color}25`, fontFamily: "'Share Tech Mono', monospace" }} />
+                      disabled={submitting}
+                      className="inp w-full px-3 py-2.5 bg-[#0d1528] border rounded-lg text-white placeholder-[#8892a4]/40 focus:outline-none text-sm transition-all disabled:opacity-50"
+                      style={{ borderColor: `${v.color}25`, fontFamily: "'Share Tech Mono', monospace" }} 
+                    />
                   </div>
                 ))}
                 <div className="md:col-span-3">
                   <label className="block text-xs text-[#10b981]/60 mb-1.5 tracking-widest" style={{ fontFamily: "'Share Tech Mono', monospace" }}>NOTES (OPTIONAL)</label>
-                  <input type="text" value={form.notes} onChange={e => setForm({ ...form, notes: e.target.value })} placeholder="Any additional observations..."
-                    className="inp w-full px-3 py-2.5 bg-[#0d1528] border border-[#10b981]/20 rounded-lg text-white placeholder-[#8892a4]/40 focus:outline-none text-sm transition-all"
-                    style={{ fontFamily: "'Share Tech Mono', monospace" }} />
+                  <input 
+                    type="text" 
+                    value={form.notes} 
+                    onChange={e => setForm({ ...form, notes: e.target.value })} 
+                    placeholder="Any additional observations..."
+                    disabled={submitting}
+                    className="inp w-full px-3 py-2.5 bg-[#0d1528] border border-[#10b981]/20 rounded-lg text-white placeholder-[#8892a4]/40 focus:outline-none text-sm transition-all disabled:opacity-50"
+                    style={{ fontFamily: "'Share Tech Mono', monospace" }} 
+                  />
                 </div>
               </div>
               <div className="flex gap-3">
-                <motion.button whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} type="submit"
-                  className="px-5 py-2.5 font-black text-sm rounded-lg flex items-center gap-2 tracking-widest"
+                <motion.button 
+                  whileHover={{ scale: submitting ? 1 : 1.02 }} 
+                  whileTap={{ scale: submitting ? 1 : 0.98 }} 
+                  type="submit"
+                  disabled={submitting}
+                  className="px-5 py-2.5 font-black text-sm rounded-lg flex items-center gap-2 tracking-widest disabled:opacity-50"
                   style={{ fontFamily: "'Orbitron', sans-serif", background: 'linear-gradient(135deg,#10b981,#00d4ff)', color: '#050810' }}>
-                  <Save className="w-4 h-4" />[{editingId ? 'UPDATE' : 'SAVE'}]
+                  {submitting ? <Loader className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+                  [{submitting ? 'SAVING...' : editingId ? 'UPDATE' : 'SAVE'}]
                 </motion.button>
-                {editingId && <motion.button whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} type="button" onClick={reset}
-                  className="px-5 py-2.5 font-black text-sm rounded-lg border border-[#10b981]/20 text-[#8892a4] hover:text-white tracking-widest"
-                  style={{ fontFamily: "'Orbitron', sans-serif" }}>[CANCEL_EDIT]</motion.button>}
+                {editingId && (
+                  <motion.button 
+                    whileHover={{ scale: 1.02 }} 
+                    whileTap={{ scale: 0.98 }} 
+                    type="button" 
+                    onClick={reset}
+                    disabled={submitting}
+                    className="px-5 py-2.5 font-black text-sm rounded-lg border border-[#10b981]/20 text-[#8892a4] hover:text-white tracking-widest disabled:opacity-50"
+                    style={{ fontFamily: "'Orbitron', sans-serif" }}>
+                    [CANCEL_EDIT]
+                  </motion.button>
+                )}
               </div>
             </form>
           </motion.div>
@@ -125,7 +313,9 @@ export default function HealthMonitoring() {
           </div>
 
           {loading ? (
-            <div className="text-center py-12"><div className="inline-block w-10 h-10 border-2 border-[#10b981] border-t-transparent rounded-full animate-spin" /></div>
+            <div className="text-center py-12">
+              <div className="inline-block w-10 h-10 border-2 border-[#10b981] border-t-transparent rounded-full animate-spin" />
+            </div>
           ) : records.length === 0 ? (
             <div className="relative p-12 border border-[#10b981]/10 rounded-xl bg-[#0a0f1e]/50 text-center cc">
               <Activity className="w-14 h-14 mx-auto mb-4 text-[#10b981]/20" />
@@ -135,7 +325,11 @@ export default function HealthMonitoring() {
           ) : (
             <div className="space-y-3">
               {records.map((rec, i) => (
-                <motion.div key={rec.id} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }}
+                <motion.div 
+                  key={rec.id} 
+                  initial={{ opacity: 0, y: 10 }} 
+                  animate={{ opacity: 1, y: 0 }} 
+                  transition={{ delay: i * 0.05 }}
                   className="relative p-5 border border-[#10b981]/15 rounded-xl bg-[#0a0f1e]/80 hover:border-[#10b981]/30 transition-all cc">
                   <div className="flex items-center justify-between mb-4">
                     <div>
@@ -144,14 +338,32 @@ export default function HealthMonitoring() {
                       </div>
                     </div>
                     <div className="flex gap-2">
-                      <motion.button whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }}
-                        onClick={() => { setForm({ heart_rate: rec.heart_rate?.toString()||'', blood_pressure: rec.blood_pressure||'', temperature: rec.temperature?.toString()||'', oxygen_level: rec.oxygen_level?.toString()||'', glucose: rec.glucose?.toString()||'', weight: rec.weight?.toString()||'', notes: rec.notes||'' }); setEditingId(rec.id); setShowForm(true); }}
-                        className="p-2 border border-[#00d4ff]/20 rounded-lg text-[#00d4ff] hover:bg-[#00d4ff]/10 transition-all">
+                      <motion.button 
+                        whileHover={{ scale: 1.1 }} 
+                        whileTap={{ scale: 0.9 }}
+                        onClick={() => { 
+                          setForm({ 
+                            heart_rate: rec.heart_rate?.toString()||'', 
+                            blood_pressure: rec.blood_pressure||'', 
+                            temperature: rec.temperature?.toString()||'', 
+                            oxygen_level: rec.oxygen_level?.toString()||'', 
+                            glucose: rec.glucose?.toString()||'', 
+                            weight: rec.weight?.toString()||'', 
+                            notes: rec.notes||'' 
+                          }); 
+                          setEditingId(rec.id); 
+                          setShowForm(true); 
+                        }}
+                        disabled={submitting}
+                        className="p-2 border border-[#00d4ff]/20 rounded-lg text-[#00d4ff] hover:bg-[#00d4ff]/10 transition-all disabled:opacity-50">
                         <Edit2 className="w-4 h-4" />
                       </motion.button>
-                      <motion.button whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }}
-                        onClick={() => confirm('DELETE_RECORD?') && healthApi.delete(rec.id).then(load)}
-                        className="p-2 border border-[#ff2d55]/20 rounded-lg text-[#ff2d55] hover:bg-[#ff2d55]/10 transition-all">
+                      <motion.button 
+                        whileHover={{ scale: 1.1 }} 
+                        whileTap={{ scale: 0.9 }}
+                        onClick={() => handleDelete(rec.id)}
+                        disabled={submitting}
+                        className="p-2 border border-[#ff2d55]/20 rounded-lg text-[#ff2d55] hover:bg-[#ff2d55]/10 transition-all disabled:opacity-50">
                         <Trash2 className="w-4 h-4" />
                       </motion.button>
                     </div>
