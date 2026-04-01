@@ -11,6 +11,9 @@ import DiseaseDetection from './pages/DiseaseDetection';
 import RiskAssessment from './pages/RiskAssessment';
 import HealthMonitoring from './pages/HealthMonitoring';
 import Profile from './pages/Profile';
+import Reminders from './pages/Reminders';
+import AICompanion from './pages/AICompanion';
+import EmergencyAlert from './pages/EmergencyAlert';
 
 function App() {
   return (
@@ -36,6 +39,9 @@ function App() {
               <Route path="risk-assessment" element={<RiskAssessment />} />
               <Route path="health-monitoring" element={<HealthMonitoring />} />
               <Route path="profile" element={<Profile />} />
+              <Route path="reminders" element={<Reminders />} />
+              <Route path="ai-companion" element={<AICompanion />} />
+              <Route path="emergency" element={<EmergencyAlert />} />
             </Route>
 
             <Route path="*" element={<Navigate to="/" replace />} />

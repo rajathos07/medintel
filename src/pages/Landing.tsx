@@ -1,186 +1,326 @@
 import { useNavigate } from 'react-router-dom';
-import { motion } from 'framer-motion';
-import { Activity, Heart, Brain, TrendingUp, ArrowRight, Zap, Shield, Users, Cpu, Dna } from 'lucide-react';
+import { motion, useScroll, useTransform } from 'framer-motion';
+import { useRef } from 'react';
+import { Activity, Heart, Brain, TrendingUp, ArrowRight, Zap, Shield, Cpu, Dna, Microscope } from 'lucide-react';
 
-const features = [
-  { icon: Heart, title: 'Vitals Tracking', description: 'Real-time monitoring of your body\'s core metrics', color: '#ff2d55', xp: '+150 XP' },
-  { icon: Brain, title: 'AI Disease Scan', description: 'Neural symptom analysis powered by frontier AI', color: '#00d4ff', xp: '+300 XP' },
-  { icon: TrendingUp, title: 'Risk Assessment', description: 'Full-body health scoring with predictive analysis', color: '#7c3aed', xp: '+250 XP' },
-  { icon: Shield, title: 'Data Fortress', description: 'Military-grade encryption on all your health data', color: '#10b981', xp: '+100 XP' },
-  { icon: Zap, title: 'Instant Intel', description: 'Sub-second AI insights personalized to your profile', color: '#f59e0b', xp: '+200 XP' },
-  { icon: Users, title: 'Expert Network', description: 'Access curated medical intelligence at any time', color: '#ec4899', xp: '+180 XP' },
+const FEATURES = [
+  { icon: Heart,       title: 'Live Vitals',       desc: 'Real-time physiological monitoring with anomaly detection',       color: '#f87171', glow: 'rgba(248,113,113,0.25)' },
+  { icon: Brain,       title: 'Neural Diagnosis',  desc: 'AI symptom analysis trained on 50M+ clinical datasets',          color: '#00e5ff', glow: 'rgba(0,229,255,0.2)'  },
+  { icon: TrendingUp,  title: 'Risk Modeling',     desc: 'Predictive health scoring with personalized risk trajectories',  color: '#a78bfa', glow: 'rgba(167,139,250,0.2)' },
+  { icon: Shield,      title: 'Zero-Trust Data',   desc: 'End-to-end encrypted health vault — your data, always yours',   color: '#34d399', glow: 'rgba(52,211,153,0.2)'  },
+  { icon: Zap,         title: 'Instant Intel',     desc: 'Sub-second AI insights delivered in plain language',             color: '#fbbf24', glow: 'rgba(251,191,36,0.2)'  },
+  { icon: Dna,         title: 'Biomarker Trends',  desc: 'Longitudinal tracking of 20+ biomarkers over time',             color: '#fb7185', glow: 'rgba(251,113,133,0.2)' },
 ];
 
-const stats = [
-  { value: '98.7%', label: 'Accuracy Rate', icon: Cpu },
-  { value: '< 2s', label: 'AI Response', icon: Zap },
-  { value: '256-bit', label: 'Encryption', icon: Shield },
+const STATS = [
+  { val: '98.7%', label: 'Diagnostic Accuracy' },
+  { val: '< 1.4s', label: 'AI Response Time' },
+  { val: '256-AES', label: 'Encryption Grade' },
+  { val: '50M+', label: 'Clinical Data Points' },
 ];
 
 export default function Landing() {
   const navigate = useNavigate();
+  const heroRef = useRef<HTMLDivElement>(null);
+  const { scrollYProgress } = useScroll({ target: heroRef });
+  const yBg = useTransform(scrollYProgress, [0, 1], ['0%', '30%']);
 
   return (
-    <div style={{ fontFamily: "'Rajdhani', 'Orbitron', sans-serif" }} className="min-h-screen bg-[#050810] text-white overflow-hidden">
+    <div style={{ fontFamily: "'DM Sans', sans-serif", background: '#020d18', color: '#e0f7ff', minHeight: '100vh', overflowX: 'hidden' }}>
       <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Rajdhani:wght@300;400;500;600;700&family=Orbitron:wght@400;700;900&family=Share+Tech+Mono&display=swap');
-        .hex-border { clip-path: polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%); }
-        .scan-line { background: repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,212,255,0.03) 2px, rgba(0,212,255,0.03) 4px); }
-        .neon-text { text-shadow: 0 0 20px currentColor, 0 0 40px currentColor; }
-        .grid-bg { background-image: linear-gradient(rgba(0,212,255,0.05) 1px, transparent 1px), linear-gradient(90deg, rgba(0,212,255,0.05) 1px, transparent 1px); background-size: 60px 60px; }
-        .card-glow:hover { box-shadow: 0 0 30px rgba(0,212,255,0.15), inset 0 0 30px rgba(0,212,255,0.05); }
-        .xp-bar { background: linear-gradient(90deg, #00d4ff, #7c3aed); animation: pulse-xp 2s ease-in-out infinite; }
-        @keyframes pulse-xp { 0%, 100% { opacity: 1; } 50% { opacity: 0.7; } }
-        .glitch::before { content: attr(data-text); position: absolute; left: 2px; text-shadow: -2px 0 #ff2d55; clip: rect(24px, 550px, 90px, 0); animation: glitch 3s infinite linear; }
-        @keyframes glitch { 0% { clip: rect(42px, 9999px, 44px, 0); } 20% { clip: rect(12px, 9999px, 78px, 0); } 40% { clip: rect(62px, 9999px, 14px, 0); } 60% { clip: rect(28px, 9999px, 90px, 0); } 80% { clip: rect(8px, 9999px, 60px, 0); } 100% { clip: rect(42px, 9999px, 44px, 0); } }
-        .corner-bracket::before, .corner-bracket::after { content: ''; position: absolute; width: 12px; height: 12px; border-color: #00d4ff; border-style: solid; }
-        .corner-bracket::before { top: 0; left: 0; border-width: 2px 0 0 2px; }
-        .corner-bracket::after { bottom: 0; right: 0; border-width: 0 2px 2px 0; }
+        @import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,wght@0,300;0,400;0,500;0,600;1,300&family=Syne:wght@700;800;900&family=Azeret+Mono:wght@400;500&display=swap');
+
+        /* Noise overlay */
+        body::before {
+          content: '';
+          position: fixed;
+          inset: 0;
+          background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.035'/%3E%3C/svg%3E");
+          pointer-events: none;
+          z-index: 999;
+          opacity: 0.5;
+        }
+
+        .hero-grid {
+          background-image:
+            linear-gradient(rgba(0,229,255,0.04) 1px, transparent 1px),
+            linear-gradient(90deg, rgba(0,229,255,0.04) 1px, transparent 1px);
+          background-size: 48px 48px;
+        }
+
+        .cell-ring {
+          border-radius: 50%;
+          border: 1px solid rgba(0,229,255,0.12);
+          position: absolute;
+          animation: cell-rotate linear infinite;
+        }
+
+        @keyframes cell-rotate {
+          from { transform: rotate(0deg); }
+          to   { transform: rotate(360deg); }
+        }
+
+        .glow-text {
+          text-shadow: 0 0 60px rgba(0,229,255,0.35), 0 0 120px rgba(0,229,255,0.15);
+        }
+
+        .bio-card {
+          position: relative;
+          background: linear-gradient(135deg, rgba(2,20,35,0.9), rgba(3,15,28,0.95));
+          border: 1px solid rgba(0,229,255,0.1);
+          border-radius: 20px;
+          transition: border-color 0.3s, box-shadow 0.3s, transform 0.3s;
+          overflow: hidden;
+        }
+
+        .bio-card::before {
+          content: '';
+          position: absolute;
+          inset: 0;
+          border-radius: inherit;
+          background: radial-gradient(ellipse at top left, rgba(0,229,255,0.05) 0%, transparent 60%);
+          pointer-events: none;
+        }
+
+        .bio-card:hover {
+          border-color: rgba(0,229,255,0.25);
+          transform: translateY(-4px);
+        }
+
+        .ecg-line {
+          stroke-dasharray: 800;
+          stroke-dashoffset: 800;
+          animation: ecg-draw 3s ease forwards 1s;
+        }
+
+        @keyframes ecg-draw {
+          to { stroke-dashoffset: 0; }
+        }
+
+        .stat-glow:hover {
+          box-shadow: 0 0 40px rgba(0,229,255,0.12);
+        }
+
+        .btn-primary {
+          background: linear-gradient(135deg, #00c8e8, #0284c7);
+          color: #020d18;
+          font-weight: 700;
+          border-radius: 12px;
+          padding: 14px 32px;
+          font-size: 14px;
+          letter-spacing: 0.08em;
+          text-transform: uppercase;
+          font-family: 'Azeret Mono', monospace;
+          transition: box-shadow 0.3s, transform 0.2s;
+          border: none;
+          cursor: pointer;
+          display: inline-flex;
+          align-items: center;
+          gap: 8px;
+        }
+
+        .btn-primary:hover {
+          box-shadow: 0 0 40px rgba(0,200,232,0.5), 0 4px 20px rgba(0,0,0,0.4);
+          transform: translateY(-2px);
+        }
+
+        .btn-ghost {
+          background: transparent;
+          color: rgba(0,229,255,0.8);
+          font-weight: 600;
+          border-radius: 12px;
+          padding: 14px 32px;
+          font-size: 14px;
+          letter-spacing: 0.08em;
+          text-transform: uppercase;
+          font-family: 'Azeret Mono', monospace;
+          border: 1px solid rgba(0,229,255,0.25);
+          cursor: pointer;
+          transition: background 0.2s, border-color 0.2s;
+        }
+
+        .btn-ghost:hover {
+          background: rgba(0,229,255,0.06);
+          border-color: rgba(0,229,255,0.45);
+        }
+
+        .scroll-indicator {
+          animation: scroll-bob 2s ease-in-out infinite;
+        }
+
+        @keyframes scroll-bob {
+          0%,100% { transform: translateY(0); opacity: 0.7; }
+          50%      { transform: translateY(6px); opacity: 1; }
+        }
       `}</style>
 
-      {/* Ambient background */}
-      <div className="fixed inset-0 grid-bg scan-line pointer-events-none" />
-      <div className="fixed top-0 left-0 w-[600px] h-[600px] rounded-full pointer-events-none" style={{ background: 'radial-gradient(circle, rgba(0,212,255,0.06) 0%, transparent 70%)', transform: 'translate(-30%, -30%)' }} />
-      <div className="fixed bottom-0 right-0 w-[600px] h-[600px] rounded-full pointer-events-none" style={{ background: 'radial-gradient(circle, rgba(124,58,237,0.08) 0%, transparent 70%)', transform: 'translate(30%, 30%)' }} />
-
-      {/* NAV */}
-      <nav className="relative z-50 border-b border-[#00d4ff]/20 bg-[#050810]/80 backdrop-blur-xl sticky top-0">
-        <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
-          <motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} className="flex items-center gap-3">
-            <div className="w-10 h-10 hex-border bg-gradient-to-br from-[#00d4ff] to-[#7c3aed] flex items-center justify-center">
-              <Activity className="w-5 h-5 text-white" />
+      {/* ── NAV ─────────────────────────────────────────────────────────────── */}
+      <nav style={{
+        position: 'sticky', top: 0, zIndex: 100,
+        borderBottom: '1px solid rgba(0,229,255,0.07)',
+        background: 'rgba(2,13,24,0.85)',
+        backdropFilter: 'blur(20px)',
+      }}>
+        <div style={{ maxWidth: 1200, margin: '0 auto', padding: '0 32px', height: 64, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <motion.div initial={{ opacity: 0, x: -16 }} animate={{ opacity: 1, x: 0 }} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <div style={{ width: 36, height: 36, borderRadius: 10, background: 'linear-gradient(135deg,#00e5ff22,#00e5ff11)', border: '1px solid rgba(0,229,255,0.3)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <Activity style={{ width: 18, height: 18, color: '#00e5ff', filter: 'drop-shadow(0 0 6px #00e5ff)' }} />
             </div>
-            <div>
-              <span style={{ fontFamily: "'Orbitron', sans-serif" }} className="font-black text-lg tracking-widest text-white">MEDI<span className="text-[#00d4ff]">INTEL</span></span>
-              <div className="text-[10px] tracking-[0.3em] text-[#00d4ff]/60" style={{ fontFamily: "'Share Tech Mono', monospace" }}>HEALTH_OS v2.4.1</div>
-            </div>
+            <span style={{ fontFamily: "'Syne', sans-serif", fontWeight: 800, fontSize: 17, letterSpacing: 2, color: '#e0f7ff' }}>
+              MEDI<span style={{ color: '#00e5ff' }}>INTEL</span>
+            </span>
           </motion.div>
 
-          <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} className="flex items-center gap-3">
-            <button onClick={() => navigate('/login')} className="px-5 py-2 text-sm border border-[#00d4ff]/30 text-[#00d4ff] rounded hover:bg-[#00d4ff]/10 transition-all tracking-widest" style={{ fontFamily: "'Share Tech Mono', monospace" }}>
-              [LOGIN]
-            </button>
-            <button onClick={() => navigate('/signup')} className="px-5 py-2 text-sm bg-[#00d4ff] text-[#050810] font-bold rounded hover:bg-white transition-all tracking-widest" style={{ fontFamily: "'Share Tech Mono', monospace" }}>
-              [ENROLL]
-            </button>
+          <motion.div initial={{ opacity: 0, x: 16 }} animate={{ opacity: 1, x: 0 }} style={{ display: 'flex', gap: 12 }}>
+            <button className="btn-ghost" style={{ padding: '9px 22px', fontSize: 12 }} onClick={() => navigate('/login')}>Log In</button>
+            <button className="btn-primary" style={{ padding: '9px 22px', fontSize: 12 }} onClick={() => navigate('/signup')}>Get Started</button>
           </motion.div>
         </div>
       </nav>
 
-      <main className="relative z-10 max-w-7xl mx-auto px-6">
-        {/* HERO */}
-        <section className="py-24 text-center space-y-8">
-          <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} className="inline-flex items-center gap-2 px-4 py-2 border border-[#00d4ff]/40 rounded-full bg-[#00d4ff]/5" style={{ fontFamily: "'Share Tech Mono', monospace" }}>
-            <span className="w-2 h-2 rounded-full bg-[#00d4ff] animate-pulse" />
-            <span className="text-[#00d4ff] text-xs tracking-widest">SYSTEM ONLINE // AI-POWERED HEALTH INTELLIGENCE</span>
-          </motion.div>
+      {/* ── HERO ────────────────────────────────────────────────────────────── */}
+      <section ref={heroRef} className="hero-grid" style={{ position: 'relative', minHeight: '100vh', display: 'flex', alignItems: 'center', overflow: 'hidden' }}>
+        {/* Ambient orbs */}
+        <motion.div style={{ y: yBg, position: 'absolute', top: '10%', right: '8%', width: 520, height: 520, borderRadius: '50%', background: 'radial-gradient(circle, rgba(0,229,255,0.07) 0%, transparent 70%)', pointerEvents: 'none' }} />
+        <motion.div style={{ y: yBg, position: 'absolute', bottom: '5%', left: '3%', width: 380, height: 380, borderRadius: '50%', background: 'radial-gradient(circle, rgba(52,211,153,0.06) 0%, transparent 70%)', pointerEvents: 'none' }} />
 
-          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}>
-            <h1 style={{ fontFamily: "'Orbitron', sans-serif", lineHeight: 1.1 }} className="text-6xl md:text-8xl font-black tracking-tight">
-              <span className="text-white">LEVEL UP</span>
-              <br />
-              <span className="text-transparent bg-clip-text" style={{ backgroundImage: 'linear-gradient(135deg, #00d4ff, #7c3aed, #ff2d55)' }}>YOUR HEALTH</span>
-            </h1>
-          </motion.div>
+        {/* Cell rings */}
+        {[260, 380, 500].map((s, i) => (
+          <div key={i} className="cell-ring" style={{
+            width: s, height: s, right: `calc(8% - ${s/2 - 130}px)`, top: `calc(50% - ${s/2}px)`,
+            animationDuration: `${20 + i * 8}s`,
+            animationDirection: i % 2 ? 'reverse' : 'normal',
+          }} />
+        ))}
 
-          <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.2 }} className="text-[#8892a4] text-lg max-w-2xl mx-auto leading-relaxed" style={{ fontFamily: "'Rajdhani', sans-serif", fontWeight: 300, letterSpacing: '0.05em' }}>
-            The world's first gamified health intelligence platform. Track vitals, detect diseases, and optimize your body like a pro — powered by frontier AI.
-          </motion.p>
+        {/* ECG decorative SVG */}
+        <svg style={{ position: 'absolute', bottom: 40, left: 0, right: 0, width: '100%', opacity: 0.2 }} height="60" viewBox="0 0 1200 60" preserveAspectRatio="none">
+          <path className="ecg-line" d="M0,30 L200,30 L230,30 L245,5 L260,55 L275,15 L290,30 L400,30 L430,30 L445,5 L460,55 L475,15 L490,30 L700,30 L730,30 L745,5 L760,55 L775,15 L790,30 L1200,30"
+            stroke="#00e5ff" strokeWidth="1.5" fill="none" />
+        </svg>
 
-          {/* XP Progress showcase */}
-          <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }} className="relative max-w-sm mx-auto p-4 border border-[#00d4ff]/20 rounded-xl bg-[#0a0f1e]/80 corner-bracket">
-            <div className="flex items-center justify-between mb-2" style={{ fontFamily: "'Share Tech Mono', monospace" }}>
-              <span className="text-xs text-[#00d4ff]/60">HEALTH SCORE</span>
-              <span className="text-xs text-[#00d4ff]">LVL 12 → 13</span>
-            </div>
-            <div className="h-3 bg-[#0d1528] rounded-full overflow-hidden border border-[#00d4ff]/20">
-              <motion.div className="h-full xp-bar rounded-full" initial={{ width: 0 }} animate={{ width: '72%' }} transition={{ delay: 0.8, duration: 1.5, ease: 'easeOut' }} />
-            </div>
-            <div className="flex justify-between mt-1 text-[10px] text-[#8892a4]" style={{ fontFamily: "'Share Tech Mono', monospace" }}>
-              <span>7,200 / 10,000 XP</span>
-              <span className="text-[#00d4ff]">+2,800 XP to next level</span>
-            </div>
-          </motion.div>
+        <div style={{ maxWidth: 1200, margin: '0 auto', padding: '80px 32px', position: 'relative', zIndex: 10, width: '100%' }}>
+          <div style={{ maxWidth: 640 }}>
+            <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}
+              style={{ display: 'inline-flex', alignItems: 'center', gap: 8, padding: '6px 16px', borderRadius: 100, background: 'rgba(0,229,255,0.07)', border: '1px solid rgba(0,229,255,0.2)', marginBottom: 28 }}>
+              <span style={{ width: 7, height: 7, borderRadius: '50%', background: '#34d399', boxShadow: '0 0 8px #34d399', display: 'inline-block', animation: 'sos-beat 2s infinite' }} />
+              <span style={{ fontSize: 11, letterSpacing: '0.18em', color: 'rgba(0,229,255,0.8)', fontFamily: "'Azeret Mono', monospace" }}>SYSTEM ONLINE // AI HEALTH INTELLIGENCE</span>
+            </motion.div>
 
-          <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.4 }} className="flex flex-col sm:flex-row gap-4 justify-center">
-            <motion.button whileHover={{ scale: 1.03, boxShadow: '0 0 30px rgba(0,212,255,0.4)' }} whileTap={{ scale: 0.97 }} onClick={() => navigate('/signup')}
-              className="px-8 py-4 font-bold text-lg rounded-lg text-[#050810] tracking-widest flex items-center justify-center gap-2"
-              style={{ fontFamily: "'Orbitron', sans-serif", background: 'linear-gradient(135deg, #00d4ff, #7c3aed)' }}>
-              START MISSION <ArrowRight className="w-5 h-5" />
-            </motion.button>
-            <motion.button whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.97 }} onClick={() => navigate('/login')}
-              className="px-8 py-4 font-bold text-lg rounded-lg border border-[#00d4ff]/40 text-[#00d4ff] tracking-widest hover:bg-[#00d4ff]/10 transition-all"
-              style={{ fontFamily: "'Orbitron', sans-serif" }}>
-              CONTINUE GAME
-            </motion.button>
-          </motion.div>
-        </section>
+            <motion.h1
+              initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}
+              className="glow-text"
+              style={{ fontFamily: "'Syne', sans-serif", fontWeight: 900, fontSize: 'clamp(44px, 7vw, 80px)', lineHeight: 1.05, letterSpacing: -1, marginBottom: 24, color: '#f0faff' }}
+            >
+              Your body.<br />
+              <span style={{ color: '#00e5ff' }}>Decoded.</span>
+            </motion.h1>
 
-        {/* STATS BAR */}
-        <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} className="grid grid-cols-3 gap-4 mb-24">
-          {stats.map((s, i) => (
-            <div key={i} className="p-6 border border-[#00d4ff]/20 rounded-xl bg-[#0a0f1e]/60 text-center corner-bracket relative card-glow transition-all">
-              <s.icon className="w-6 h-6 mx-auto mb-2 text-[#00d4ff]" />
-              <div style={{ fontFamily: "'Orbitron', sans-serif" }} className="text-3xl font-black text-white mb-1">{s.value}</div>
-              <div className="text-[#8892a4] text-sm tracking-widest" style={{ fontFamily: "'Share Tech Mono', monospace" }}>{s.label}</div>
-            </div>
-          ))}
+            <motion.p initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }}
+              style={{ fontSize: 17, lineHeight: 1.7, color: 'rgba(176,213,230,0.75)', marginBottom: 40, fontWeight: 300, maxWidth: 500 }}>
+              The world's most advanced personal health OS. AI-powered diagnostics, real-time vitals tracking, and predictive risk modeling — all in one bioluminescent interface.
+            </motion.p>
+
+            <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.4 }} style={{ display: 'flex', gap: 14, flexWrap: 'wrap' }}>
+              <button className="btn-primary" onClick={() => navigate('/signup')}>
+                Begin Scan <ArrowRight style={{ width: 16, height: 16 }} />
+              </button>
+              <button className="btn-ghost" onClick={() => navigate('/login')}>
+                Resume Session
+              </button>
+            </motion.div>
+
+            {/* Mini stats row */}
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.7 }}
+              style={{ display: 'flex', gap: 32, marginTop: 52, paddingTop: 32, borderTop: '1px solid rgba(0,229,255,0.08)' }}>
+              {STATS.slice(0, 3).map((s, i) => (
+                <div key={i}>
+                  <div style={{ fontFamily: "'Syne', sans-serif", fontWeight: 800, fontSize: 22, color: '#00e5ff', lineHeight: 1 }}>{s.val}</div>
+                  <div style={{ fontSize: 11, color: 'rgba(148,163,184,0.7)', marginTop: 4, letterSpacing: '0.05em' }}>{s.label}</div>
+                </div>
+              ))}
+            </motion.div>
+          </div>
+        </div>
+
+        {/* Scroll hint */}
+        <div className="scroll-indicator" style={{ position: 'absolute', bottom: 24, left: '50%', transform: 'translateX(-50%)', color: 'rgba(0,229,255,0.35)', fontSize: 11, fontFamily: "'Azeret Mono', monospace", letterSpacing: '0.2em', textAlign: 'center' }}>
+          SCROLL
+        </div>
+      </section>
+
+      {/* ── FEATURES ────────────────────────────────────────────────────────── */}
+      <section style={{ maxWidth: 1200, margin: '0 auto', padding: '100px 32px' }}>
+        <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} style={{ marginBottom: 64, textAlign: 'center' }}>
+          <div style={{ fontFamily: "'Azeret Mono', monospace", fontSize: 11, letterSpacing: '0.25em', color: 'rgba(0,229,255,0.5)', marginBottom: 16 }}>// CAPABILITIES</div>
+          <h2 style={{ fontFamily: "'Syne', sans-serif", fontWeight: 800, fontSize: 'clamp(28px,4vw,48px)', color: '#e0f7ff', letterSpacing: -0.5 }}>
+            Medical-grade tools.<br /><span style={{ color: '#00e5ff' }}>Consumer-grade experience.</span>
+          </h2>
         </motion.div>
 
-        {/* FEATURES GRID */}
-        <section className="mb-24 space-y-12">
-          <motion.div initial={{ opacity: 0 }} whileInView={{ opacity: 1 }} viewport={{ once: true }} className="text-center">
-            <div className="text-[#00d4ff]/60 text-sm tracking-[0.4em] mb-3" style={{ fontFamily: "'Share Tech Mono', monospace" }}>// ABILITY_TREE</div>
-            <h2 style={{ fontFamily: "'Orbitron', sans-serif" }} className="text-4xl font-black text-white tracking-tight">UNLOCK YOUR POWERS</h2>
-          </motion.div>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: 20 }}>
+          {FEATURES.map((f, i) => (
+            <motion.div key={i} initial={{ opacity: 0, y: 24 }} whileInView={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.07 }} viewport={{ once: true }}
+              className="bio-card" style={{ padding: 28 }}
+              whileHover={{ boxShadow: `0 8px 40px ${f.glow}` }}>
+              <div style={{ width: 48, height: 48, borderRadius: 14, background: `${f.color}15`, border: `1px solid ${f.color}30`, display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 18 }}>
+                <f.icon style={{ width: 22, height: 22, color: f.color, filter: `drop-shadow(0 0 6px ${f.color})` }} />
+              </div>
+              <h3 style={{ fontFamily: "'Syne', sans-serif", fontWeight: 700, fontSize: 17, color: '#e0f7ff', marginBottom: 8 }}>{f.title}</h3>
+              <p style={{ fontSize: 14, color: 'rgba(148,163,184,0.75)', lineHeight: 1.6, fontWeight: 300 }}>{f.desc}</p>
+              <div style={{ marginTop: 20, height: 2, borderRadius: 2, background: `linear-gradient(90deg, ${f.color}60, transparent)` }} />
+            </motion.div>
+          ))}
+        </div>
+      </section>
 
-          <div className="grid md:grid-cols-3 gap-5">
-            {features.map((f, i) => (
-              <motion.div key={i} initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.08 }} viewport={{ once: true }}
-                whileHover={{ y: -4, boxShadow: `0 0 30px ${f.color}25` }}
-                className="p-6 border rounded-xl bg-[#0a0f1e]/80 cursor-pointer transition-all relative overflow-hidden corner-bracket"
-                style={{ borderColor: `${f.color}30` }}>
-                <div className="absolute top-0 right-0 text-[10px] px-2 py-1 rounded-bl font-mono" style={{ background: `${f.color}20`, color: f.color, fontFamily: "'Share Tech Mono', monospace" }}>{f.xp}</div>
-                <div className="w-12 h-12 rounded-lg flex items-center justify-center mb-4" style={{ background: `${f.color}15`, border: `1px solid ${f.color}40` }}>
-                  <f.icon className="w-6 h-6" style={{ color: f.color }} />
-                </div>
-                <h3 style={{ fontFamily: "'Orbitron', sans-serif" }} className="font-bold text-white mb-2 tracking-wide">{f.title}</h3>
-                <p className="text-[#8892a4] text-sm leading-relaxed" style={{ fontFamily: "'Rajdhani', sans-serif", fontWeight: 300 }}>{f.description}</p>
-                <div className="mt-4 h-1 rounded-full bg-[#0d1528]">
-                  <motion.div className="h-full rounded-full" style={{ background: f.color, width: '0%' }} whileInView={{ width: `${60 + i * 8}%` }} viewport={{ once: true }} transition={{ delay: 0.3 + i * 0.1, duration: 0.8 }} />
-                </div>
-              </motion.div>
+      {/* ── STATS BAND ──────────────────────────────────────────────────────── */}
+      <section style={{ borderTop: '1px solid rgba(0,229,255,0.07)', borderBottom: '1px solid rgba(0,229,255,0.07)', background: 'rgba(0,229,255,0.02)', padding: '60px 32px' }}>
+        <div style={{ maxWidth: 1200, margin: '0 auto', display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 24 }}>
+          {STATS.map((s, i) => (
+            <motion.div key={i} initial={{ opacity: 0, y: 16 }} whileInView={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.08 }} viewport={{ once: true }}
+              className="stat-glow" style={{ textAlign: 'center', padding: 24, borderRadius: 16, border: '1px solid rgba(0,229,255,0.07)', transition: 'box-shadow 0.3s' }}>
+              <div style={{ fontFamily: "'Syne', sans-serif", fontWeight: 800, fontSize: 36, color: '#00e5ff', lineHeight: 1 }}>{s.val}</div>
+              <div style={{ fontSize: 12, color: 'rgba(148,163,184,0.65)', marginTop: 8, letterSpacing: '0.08em' }}>{s.label}</div>
+            </motion.div>
+          ))}
+        </div>
+      </section>
+
+      {/* ── CTA ─────────────────────────────────────────────────────────────── */}
+      <section style={{ maxWidth: 1200, margin: '0 auto', padding: '100px 32px' }}>
+        <motion.div initial={{ opacity: 0, scale: 0.97 }} whileInView={{ opacity: 1, scale: 1 }} viewport={{ once: true }}
+          style={{ borderRadius: 28, padding: '72px 48px', textAlign: 'center', position: 'relative', overflow: 'hidden', background: 'linear-gradient(135deg, rgba(0,229,255,0.06) 0%, rgba(52,211,153,0.04) 100%)', border: '1px solid rgba(0,229,255,0.12)' }}>
+          {/* Background decoration */}
+          <div style={{ position: 'absolute', top: -80, right: -80, width: 300, height: 300, borderRadius: '50%', background: 'radial-gradient(circle, rgba(0,229,255,0.08) 0%, transparent 70%)', pointerEvents: 'none' }} />
+          <div style={{ position: 'absolute', bottom: -60, left: -60, width: 200, height: 200, borderRadius: '50%', background: 'radial-gradient(circle, rgba(52,211,153,0.07) 0%, transparent 70%)', pointerEvents: 'none' }} />
+
+          <div style={{ position: 'relative', zIndex: 1 }}>
+            <div style={{ fontFamily: "'Azeret Mono', monospace", fontSize: 11, letterSpacing: '0.25em', color: 'rgba(0,229,255,0.5)', marginBottom: 20 }}>// INITIALIZE HEALTH PROFILE</div>
+            <h2 style={{ fontFamily: "'Syne', sans-serif", fontWeight: 900, fontSize: 'clamp(28px,4vw,52px)', color: '#f0faff', marginBottom: 18, letterSpacing: -0.5 }}>
+              Ready to know<br />your body?
+            </h2>
+            <p style={{ fontSize: 16, color: 'rgba(176,213,230,0.65)', marginBottom: 40, maxWidth: 440, margin: '0 auto 40px', fontWeight: 300 }}>
+              Join thousands monitoring their health with clinical-grade AI. Free to start, no credit card required.
+            </p>
+            <button className="btn-primary" style={{ fontSize: 14, padding: '16px 40px' }} onClick={() => navigate('/signup')}>
+              Start Free Today <ArrowRight style={{ width: 17, height: 17 }} />
+            </button>
+          </div>
+        </motion.div>
+      </section>
+
+      {/* ── FOOTER ──────────────────────────────────────────────────────────── */}
+      <footer style={{ borderTop: '1px solid rgba(0,229,255,0.06)', padding: '28px 32px' }}>
+        <div style={{ maxWidth: 1200, margin: '0 auto', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 16 }}>
+          <span style={{ fontFamily: "'Syne', sans-serif", fontWeight: 800, fontSize: 14, letterSpacing: 2, color: '#e0f7ff' }}>
+            MEDI<span style={{ color: '#00e5ff' }}>INTEL</span>
+          </span>
+          <span style={{ fontSize: 12, color: 'rgba(148,163,184,0.45)', fontFamily: "'Azeret Mono', monospace" }}>© 2026 MedIntel Health OS · All rights reserved</span>
+          <div style={{ display: 'flex', gap: 20 }}>
+            {['Privacy', 'Terms', 'Docs'].map(l => (
+              <span key={l} style={{ fontSize: 12, color: 'rgba(0,229,255,0.45)', cursor: 'pointer', fontFamily: "'Azeret Mono', monospace", letterSpacing: '0.05em' }}>{l}</span>
             ))}
-          </div>
-        </section>
-
-        {/* CTA */}
-        <motion.section initial={{ opacity: 0, y: 30 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} className="mb-24">
-          <div className="relative p-12 rounded-2xl text-center overflow-hidden border border-[#00d4ff]/20" style={{ background: 'linear-gradient(135deg, #0a0f1e, #0d1528)' }}>
-            <div className="absolute inset-0 scan-line" />
-            <div className="absolute inset-0" style={{ background: 'radial-gradient(ellipse at center, rgba(0,212,255,0.08) 0%, transparent 70%)' }} />
-            <div className="relative z-10">
-              <div className="text-[#00d4ff] text-sm tracking-[0.4em] mb-4" style={{ fontFamily: "'Share Tech Mono', monospace" }}>// MISSION_BRIEFING</div>
-              <h2 style={{ fontFamily: "'Orbitron', sans-serif" }} className="text-4xl md:text-5xl font-black text-white mb-4">READY TO BEGIN?</h2>
-              <p className="text-[#8892a4] mb-8 max-w-xl mx-auto" style={{ fontFamily: "'Rajdhani', sans-serif" }}>Join the next generation of health-aware individuals. Your body is the final frontier — start exploring it today.</p>
-              <motion.button whileHover={{ scale: 1.04, boxShadow: '0 0 40px rgba(0,212,255,0.5)' }} whileTap={{ scale: 0.97 }} onClick={() => navigate('/signup')}
-                className="px-10 py-4 font-black text-lg rounded-lg text-[#050810] tracking-widest"
-                style={{ fontFamily: "'Orbitron', sans-serif", background: 'linear-gradient(135deg, #00d4ff, #7c3aed)' }}>
-                INITIALIZE PLAYER
-              </motion.button>
-            </div>
-          </div>
-        </motion.section>
-      </main>
-
-      <footer className="border-t border-[#00d4ff]/10 bg-[#050810]/80 py-8 relative z-10">
-        <div className="max-w-7xl mx-auto px-6 flex flex-col md:flex-row items-center justify-between gap-4">
-          <span style={{ fontFamily: "'Orbitron', sans-serif" }} className="font-black tracking-widest text-white text-sm">MEDI<span className="text-[#00d4ff]">INTEL</span></span>
-          <span className="text-[#8892a4] text-xs" style={{ fontFamily: "'Share Tech Mono', monospace" }}>© 2026 MediIntel Health OS // All systems nominal</span>
-          <div className="flex gap-4 text-xs text-[#8892a4]" style={{ fontFamily: "'Share Tech Mono', monospace" }}>
-            <span className="hover:text-[#00d4ff] cursor-pointer transition-colors">[Privacy]</span>
-            <span className="hover:text-[#00d4ff] cursor-pointer transition-colors">[Terms]</span>
-            <span className="hover:text-[#00d4ff] cursor-pointer transition-colors">[Docs]</span>
           </div>
         </div>
       </footer>

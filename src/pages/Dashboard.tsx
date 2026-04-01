@@ -1,170 +1,181 @@
 import { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
-import { Activity, Heart, Droplet, Thermometer, Wind, TrendingUp, Calendar, Zap, Award } from 'lucide-react';
+import { Activity, Heart, Droplet, Thermometer, Wind, TrendingUp, Zap, Award, ChevronRight } from 'lucide-react';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { healthApi } from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
+import { useNavigate } from 'react-router-dom';
 
 interface HealthRecord {
-  id: string; user_id: string; heart_rate: number | null; blood_pressure: string | null;
+  id: string; heart_rate: number | null; blood_pressure: string | null;
   temperature: number | null; oxygen_level: number | null; glucose: number | null;
-  weight: number | null; notes: string | null; recorded_at: string;
+  weight: number | null; recorded_at: string;
 }
 
-const SHARED_STYLES = `
-  @import url('https://fonts.googleapis.com/css2?family=Rajdhani:wght@300;400;500;600;700&family=Orbitron:wght@400;700;900&family=Share+Tech+Mono&display=swap');
-  .grid-bg{background-image:linear-gradient(rgba(0,212,255,0.03) 1px,transparent 1px),linear-gradient(90deg,rgba(0,212,255,0.03) 1px,transparent 1px);background-size:60px 60px;}
-  .corner::before,.corner::after{content:'';position:absolute;width:12px;height:12px;border-style:solid;}
-  .corner-c::before{top:0;left:0;border-width:2px 0 0 2px;border-color:#00d4ff;}
-  .corner-c::after{bottom:0;right:0;border-width:0 2px 2px 0;border-color:#00d4ff;}
-  .stat-glow:hover{box-shadow:0 0 25px rgba(0,212,255,0.12);}
+const BIO_STYLES = `
+  @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=Syne:wght@700;800;900&family=Azeret+Mono:wght@400;500&display=swap');
+  .bio-card { background: linear-gradient(135deg, rgba(2,20,35,0.9), rgba(3,15,28,0.95)); border: 1px solid rgba(0,229,255,0.09); border-radius: 18px; transition: border-color 0.3s, box-shadow 0.3s; }
+  .bio-card:hover { border-color: rgba(0,229,255,0.2); }
+  .vital-card { transition: transform 0.2s, box-shadow 0.2s; }
+  .vital-card:hover { transform: translateY(-3px); }
+  .hero-grid { background-image: linear-gradient(rgba(0,229,255,0.03) 1px, transparent 1px), linear-gradient(90deg, rgba(0,229,255,0.03) 1px, transparent 1px); background-size: 48px 48px; }
+  @keyframes sos-beat { 0%,100%{opacity:1} 50%{opacity:0.4} }
+  .live-dot { animation: sos-beat 2s infinite; }
 `;
 
 export default function Dashboard() {
   const [records, setRecords] = useState<HealthRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const { profile } = useAuth();
+  const navigate = useNavigate();
 
   useEffect(() => {
     healthApi.getRecent(7).then(d => { setRecords(d || []); setLoading(false); }).catch(() => setLoading(false));
   }, []);
 
   const latest = records[0];
-  const heartRateData = [...records].reverse().map(r => ({
-    date: new Date(r.recorded_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
-    value: r.heart_rate || 0,
+  const chartData = [...records].reverse().map(r => ({
+    t: new Date(r.recorded_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+    hr: r.heart_rate || 0,
+    o2: r.oxygen_level || 0,
   }));
 
   const vitals = [
-    { icon: Heart, label: 'Heart Rate', value: latest?.heart_rate ?? '--', unit: 'BPM', color: '#ff2d55', progress: latest?.heart_rate ? Math.min((latest.heart_rate / 120) * 100, 100) : 0 },
-    { icon: Activity, label: 'Blood Pressure', value: latest?.blood_pressure ?? '--', unit: 'mmHg', color: '#00d4ff', progress: 75 },
-    { icon: Thermometer, label: 'Temperature', value: latest?.temperature ?? '--', unit: '°C', color: '#f59e0b', progress: latest?.temperature ? ((latest.temperature - 35) / 5) * 100 : 0 },
-    { icon: Wind, label: 'Oxygen Level', value: latest?.oxygen_level ?? '--', unit: '%', color: '#10b981', progress: latest?.oxygen_level ?? 0 },
-    { icon: Droplet, label: 'Glucose', value: latest?.glucose ?? '--', unit: 'mg/dL', color: '#a855f7', progress: latest?.glucose ? Math.min((latest.glucose / 180) * 100, 100) : 0 },
-    { icon: TrendingUp, label: 'Weight', value: latest?.weight ?? '--', unit: 'kg', color: '#ec4899', progress: 60 },
+    { icon: Heart,      label: 'Heart Rate',    value: latest?.heart_rate ?? '--',   unit: 'BPM',   color: '#f87171', max: 120, val: latest?.heart_rate },
+    { icon: Activity,   label: 'Blood Pressure',value: latest?.blood_pressure ?? '--',unit: 'mmHg',  color: '#00e5ff', max: 180, val: 75 },
+    { icon: Thermometer,label: 'Temperature',   value: latest?.temperature ?? '--',  unit: '°C',    color: '#fbbf24', max: 42,  val: latest?.temperature },
+    { icon: Wind,       label: 'Oxygen Level',  value: latest?.oxygen_level ?? '--', unit: '%',     color: '#34d399', max: 100, val: latest?.oxygen_level },
+    { icon: Droplet,    label: 'Glucose',       value: latest?.glucose ?? '--',      unit: 'mg/dL', color: '#a78bfa', max: 180, val: latest?.glucose },
+    { icon: TrendingUp, label: 'Weight',        value: latest?.weight ?? '--',       unit: 'kg',    color: '#fb7185', max: 120, val: latest?.weight },
   ];
 
-  const achievements = [
-    { label: 'First Record', done: records.length > 0, icon: '🏆' },
-    { label: '7-Day Streak', done: records.length >= 7, icon: '🔥' },
-    { label: 'AI Scan', done: false, icon: '🧠' },
-    { label: 'Risk Check', done: false, icon: '🛡️' },
+  const quickActions = [
+    { label: 'Log Vitals',      path: '/app/health-monitoring', color: '#34d399' },
+    { label: 'Run AI Scan',     path: '/app/disease-detection', color: '#00e5ff' },
+    { label: 'Risk Check',      path: '/app/risk-assessment',   color: '#a78bfa' },
+    { label: 'Set Reminder',    path: '/app/reminders',         color: '#fbbf24' },
   ];
 
   return (
-    <div style={{ fontFamily: "'Rajdhani', sans-serif" }} className="min-h-screen bg-[#050810] text-white">
-      <style>{SHARED_STYLES}</style>
-      <div className="fixed inset-0 grid-bg pointer-events-none" />
+    <div style={{ fontFamily: "'DM Sans', sans-serif", minHeight: '100vh', background: '#020d18', color: '#e0f7ff', padding: '28px 32px' }}>
+      <style>{BIO_STYLES}</style>
 
-      <div className="relative z-10 max-w-7xl mx-auto p-6 space-y-6">
+      {/* Header */}
+      <motion.div initial={{ opacity: 0, y: -16 }} animate={{ opacity: 1, y: 0 }} style={{ marginBottom: 32 }}>
+        <div style={{ fontFamily: "'Azeret Mono', monospace", fontSize: 10, letterSpacing: '0.2em', color: 'rgba(0,229,255,0.45)', marginBottom: 6 }}>// COMMAND_CENTER</div>
+        <h1 style={{ fontFamily: "'Syne', sans-serif", fontWeight: 900, fontSize: 32, letterSpacing: -0.5, color: '#f0faff', lineHeight: 1.1 }}>
+          Welcome back, <span style={{ color: '#00e5ff' }}>{profile?.full_name?.split(' ')[0] || 'Player'}</span>
+        </h1>
+        <p style={{ fontSize: 13, color: 'rgba(148,163,184,0.6)', marginTop: 4 }}>
+          {new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}
+        </p>
+      </motion.div>
 
-        {/* Header */}
-        <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }}
-          className="relative p-6 border border-[#00d4ff]/20 rounded-xl bg-[#0a0f1e]/80 backdrop-blur corner corner-c overflow-hidden">
-          <div className="absolute inset-0" style={{ background: 'radial-gradient(ellipse at left, rgba(0,212,255,0.05) 0%, transparent 60%)' }} />
-          <div className="relative flex items-center justify-between">
-            <div>
-              <div className="text-[#00d4ff]/60 text-xs tracking-widest mb-1" style={{ fontFamily: "'Share Tech Mono', monospace" }}>// PLAYER_DASHBOARD</div>
-              <h1 style={{ fontFamily: "'Orbitron', sans-serif" }} className="text-3xl font-black text-white">
-                WELCOME BACK, <span className="text-[#00d4ff]">{(profile?.full_name || 'PLAYER').toUpperCase()}</span>
-              </h1>
-              <p className="text-[#8892a4] text-sm mt-1 flex items-center gap-2" style={{ fontFamily: "'Share Tech Mono', monospace" }}>
-                <Calendar className="w-4 h-4" />
-                {new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
-              </p>
+      {/* Vitals grid */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 14, marginBottom: 24 }}>
+        {vitals.map((v, i) => (
+          <motion.div key={v.label} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.06 }}
+            className="bio-card vital-card" style={{ padding: 20 }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
+              <div style={{ width: 36, height: 36, borderRadius: 10, background: `${v.color}14`, border: `1px solid ${v.color}28`, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <v.icon style={{ width: 16, height: 16, color: v.color }} />
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+                <span className="live-dot" style={{ width: 6, height: 6, borderRadius: '50%', background: v.color, display: 'inline-block', boxShadow: `0 0 8px ${v.color}` }} />
+                <span style={{ fontSize: 10, color: `${v.color}90`, fontFamily: "'Azeret Mono', monospace", letterSpacing: '0.1em' }}>LIVE</span>
+              </div>
             </div>
-            <div className="text-right">
-              <div className="flex items-center gap-2 justify-end mb-1">
-                <Award className="w-5 h-5 text-[#f59e0b]" />
-                <span style={{ fontFamily: "'Orbitron', sans-serif" }} className="text-2xl font-black text-[#f59e0b]">LVL 12</span>
-              </div>
-              <div className="w-36 h-2 bg-[#0d1528] rounded-full overflow-hidden border border-[#00d4ff]/20">
-                <motion.div className="h-full rounded-full" style={{ background: 'linear-gradient(90deg, #00d4ff, #7c3aed)' }}
-                  initial={{ width: 0 }} animate={{ width: '72%' }} transition={{ delay: 0.5, duration: 1 }} />
-              </div>
-              <div className="text-[10px] text-[#8892a4] mt-1" style={{ fontFamily: "'Share Tech Mono', monospace" }}>7,200 / 10,000 XP</div>
+            <div style={{ fontSize: 11, color: 'rgba(148,163,184,0.6)', letterSpacing: '0.1em', marginBottom: 4, fontFamily: "'Azeret Mono', monospace" }}>{v.label.toUpperCase()}</div>
+            <div style={{ display: 'flex', alignItems: 'baseline', gap: 5, marginBottom: 12 }}>
+              <span style={{ fontFamily: "'Syne', sans-serif", fontWeight: 800, fontSize: 26, color: '#f0faff' }}>{v.value}</span>
+              <span style={{ fontSize: 11, color: 'rgba(148,163,184,0.5)' }}>{v.unit}</span>
             </div>
-          </div>
-        </motion.div>
-
-        {/* Vitals Grid */}
-        <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-          {vitals.map((v, i) => (
-            <motion.div key={v.label} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.07 }}
-              className="relative p-5 border rounded-xl bg-[#0a0f1e]/80 stat-glow transition-all corner corner-c"
-              style={{ borderColor: `${v.color}30` }}>
-              <div className="flex items-center justify-between mb-3">
-                <div className="w-9 h-9 rounded-lg flex items-center justify-center" style={{ background: `${v.color}15`, border: `1px solid ${v.color}30` }}>
-                  <v.icon className="w-5 h-5" style={{ color: v.color }} />
-                </div>
-                <span className="text-xs" style={{ color: v.color, fontFamily: "'Share Tech Mono', monospace" }}>LIVE</span>
-              </div>
-              <div className="text-[#8892a4] text-xs mb-1 tracking-widest" style={{ fontFamily: "'Share Tech Mono', monospace" }}>{v.label.toUpperCase()}</div>
-              <div className="flex items-baseline gap-1 mb-3">
-                <span style={{ fontFamily: "'Orbitron', sans-serif" }} className="text-2xl font-black text-white">{v.value}</span>
-                <span className="text-xs text-[#8892a4]" style={{ fontFamily: "'Share Tech Mono', monospace" }}>{v.unit}</span>
-              </div>
-              <div className="h-1.5 bg-[#0d1528] rounded-full overflow-hidden">
-                <motion.div className="h-full rounded-full" style={{ background: v.color }}
-                  initial={{ width: 0 }} animate={{ width: `${v.progress}%` }} transition={{ delay: 0.3 + i * 0.07, duration: 0.8 }} />
-              </div>
-            </motion.div>
-          ))}
-        </div>
-
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Chart */}
-          {records.length > 0 && (
-            <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.5 }}
-              className="lg:col-span-2 relative p-6 border border-[#ff2d55]/20 rounded-xl bg-[#0a0f1e]/80 corner corner-c">
-              <div className="flex items-center gap-2 mb-6">
-                <Zap className="w-5 h-5 text-[#ff2d55]" />
-                <span style={{ fontFamily: "'Orbitron', sans-serif" }} className="font-bold text-white tracking-wide">HEART RATE HISTORY</span>
-                <span className="ml-auto text-xs text-[#ff2d55]" style={{ fontFamily: "'Share Tech Mono', monospace" }}>7D_TREND</span>
-              </div>
-              <ResponsiveContainer width="100%" height={220}>
-                <AreaChart data={heartRateData}>
-                  <defs>
-                    <linearGradient id="hg" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#ff2d55" stopOpacity={0.4} />
-                      <stop offset="95%" stopColor="#ff2d55" stopOpacity={0} />
-                    </linearGradient>
-                  </defs>
-                  <CartesianGrid strokeDasharray="3 3" stroke="rgba(0,212,255,0.08)" />
-                  <XAxis dataKey="date" stroke="#4a5568" tick={{ fontFamily: "'Share Tech Mono', monospace", fontSize: 10, fill: '#8892a4' }} />
-                  <YAxis stroke="#4a5568" tick={{ fontFamily: "'Share Tech Mono', monospace", fontSize: 10, fill: '#8892a4' }} />
-                  <Tooltip contentStyle={{ background: '#0a0f1e', border: '1px solid rgba(255,45,85,0.3)', borderRadius: '8px', fontFamily: "'Share Tech Mono', monospace", fontSize: 12 }} />
-                  <Area type="monotone" dataKey="value" stroke="#ff2d55" strokeWidth={2} fill="url(#hg)" />
-                </AreaChart>
-              </ResponsiveContainer>
-            </motion.div>
-          )}
-
-          {/* Achievements */}
-          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.6 }}
-            className="relative p-6 border border-[#f59e0b]/20 rounded-xl bg-[#0a0f1e]/80 corner corner-c">
-            <div className="flex items-center gap-2 mb-5">
-              <Award className="w-5 h-5 text-[#f59e0b]" />
-              <span style={{ fontFamily: "'Orbitron', sans-serif" }} className="font-bold text-white tracking-wide">ACHIEVEMENTS</span>
-            </div>
-            <div className="space-y-3">
-              {achievements.map((a, i) => (
-                <div key={i} className={`flex items-center gap-3 p-3 rounded-lg border transition-all ${a.done ? 'border-[#f59e0b]/30 bg-[#f59e0b]/5' : 'border-[#ffffff]/5 bg-[#0d1528]/50 opacity-50'}`}>
-                  <span className="text-xl">{a.icon}</span>
-                  <span className="text-sm text-white flex-1" style={{ fontFamily: "'Share Tech Mono', monospace" }}>{a.label}</span>
-                  {a.done && <span className="text-[#f59e0b] text-xs" style={{ fontFamily: "'Share Tech Mono', monospace" }}>✓</span>}
-                </div>
-              ))}
+            {/* Progress bar */}
+            <div style={{ height: 3, borderRadius: 3, background: 'rgba(255,255,255,0.05)', overflow: 'hidden' }}>
+              <motion.div initial={{ width: 0 }} animate={{ width: `${v.val ? Math.min((Number(v.val) / v.max) * 100, 100) : 0}%` }}
+                transition={{ delay: 0.3 + i * 0.06, duration: 0.8 }}
+                style={{ height: '100%', borderRadius: 3, background: `linear-gradient(90deg, ${v.color}, ${v.color}88)` }} />
             </div>
           </motion.div>
-        </div>
-
-        {loading && (
-          <div className="text-center py-12">
-            <div className="inline-block w-10 h-10 border-2 border-[#00d4ff] border-t-transparent rounded-full animate-spin" />
-          </div>
-        )}
+        ))}
       </div>
+
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 320px', gap: 20, marginBottom: 24 }}>
+        {/* Chart */}
+        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.45 }} className="bio-card" style={{ padding: 24 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 24 }}>
+            <Zap style={{ width: 16, height: 16, color: '#f87171' }} />
+            <span style={{ fontFamily: "'Syne', sans-serif", fontWeight: 700, fontSize: 14, color: '#e0f7ff' }}>Heart Rate History</span>
+            <span style={{ marginLeft: 'auto', fontSize: 10, fontFamily: "'Azeret Mono', monospace", color: 'rgba(248,113,113,0.6)', letterSpacing: '0.12em' }}>7D_TREND</span>
+          </div>
+          {records.length > 0 ? (
+            <ResponsiveContainer width="100%" height={200}>
+              <AreaChart data={chartData}>
+                <defs>
+                  <linearGradient id="hrGrad" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="#f87171" stopOpacity={0.3} />
+                    <stop offset="95%" stopColor="#f87171" stopOpacity={0} />
+                  </linearGradient>
+                </defs>
+                <CartesianGrid strokeDasharray="3 3" stroke="rgba(0,229,255,0.05)" />
+                <XAxis dataKey="t" stroke="transparent" tick={{ fill: 'rgba(148,163,184,0.5)', fontSize: 10, fontFamily: "'Azeret Mono'" }} />
+                <YAxis stroke="transparent" tick={{ fill: 'rgba(148,163,184,0.5)', fontSize: 10, fontFamily: "'Azeret Mono'" }} />
+                <Tooltip contentStyle={{ background: '#030f1c', border: '1px solid rgba(0,229,255,0.15)', borderRadius: 10, fontSize: 12, fontFamily: "'Azeret Mono'" }} />
+                <Area type="monotone" dataKey="hr" stroke="#f87171" strokeWidth={2} fill="url(#hrGrad)" />
+              </AreaChart>
+            </ResponsiveContainer>
+          ) : (
+            <div style={{ height: 200, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'rgba(148,163,184,0.35)', fontSize: 13, fontFamily: "'Azeret Mono', monospace" }}>
+              NO_DATA — log your first vitals
+            </div>
+          )}
+        </motion.div>
+
+        {/* Achievements */}
+        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.52 }} className="bio-card" style={{ padding: 24 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 20 }}>
+            <Award style={{ width: 16, height: 16, color: '#fbbf24' }} />
+            <span style={{ fontFamily: "'Syne', sans-serif", fontWeight: 700, fontSize: 14, color: '#e0f7ff' }}>Milestones</span>
+          </div>
+          {[
+            { label: 'First Record Logged',  done: records.length > 0, xp: '+150 XP' },
+            { label: '7-Day Tracking Streak',done: records.length >= 7, xp: '+300 XP' },
+            { label: 'AI Scan Completed',    done: false,               xp: '+200 XP' },
+            { label: 'Risk Assessment Done', done: false,               xp: '+250 XP' },
+          ].map((a, i) => (
+            <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '11px 14px', borderRadius: 12, marginBottom: 8, background: a.done ? 'rgba(251,191,36,0.06)' : 'rgba(255,255,255,0.02)', border: `1px solid ${a.done ? 'rgba(251,191,36,0.2)' : 'rgba(255,255,255,0.04)'}`, opacity: a.done ? 1 : 0.5 }}>
+              <span style={{ fontSize: 16 }}>{a.done ? '✓' : '○'}</span>
+              <span style={{ flex: 1, fontSize: 12, color: a.done ? '#e0f7ff' : 'rgba(148,163,184,0.6)' }}>{a.label}</span>
+              <span style={{ fontSize: 10, fontFamily: "'Azeret Mono', monospace", color: '#fbbf24' }}>{a.xp}</span>
+            </div>
+          ))}
+        </motion.div>
+      </div>
+
+      {/* Quick actions */}
+      <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.6 }}>
+        <div style={{ fontFamily: "'Azeret Mono', monospace", fontSize: 10, letterSpacing: '0.2em', color: 'rgba(0,229,255,0.4)', marginBottom: 14 }}>// QUICK_ACTIONS</div>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12 }}>
+          {quickActions.map((a, i) => (
+            <motion.button key={i} whileHover={{ scale: 1.03, y: -2 }} whileTap={{ scale: 0.97 }}
+              onClick={() => navigate(a.path)}
+              style={{ padding: '14px 16px', borderRadius: 14, background: `${a.color}0d`, border: `1px solid ${a.color}25`, color: a.color, fontFamily: "'DM Sans', sans-serif", fontSize: 13, fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'space-between', transition: 'box-shadow 0.2s' }}
+              onMouseEnter={e => (e.currentTarget.style.boxShadow = `0 4px 24px ${a.color}20`)}
+              onMouseLeave={e => (e.currentTarget.style.boxShadow = 'none')}
+            >
+              {a.label}
+              <ChevronRight style={{ width: 14, height: 14 }} />
+            </motion.button>
+          ))}
+        </div>
+      </motion.div>
+
+      {loading && (
+        <div style={{ textAlign: 'center', padding: '40px 0' }}>
+          <div style={{ width: 36, height: 36, border: '2px solid rgba(0,229,255,0.3)', borderTopColor: '#00e5ff', borderRadius: '50%', animation: 'spin 0.8s linear infinite', margin: '0 auto' }} />
+          <style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style>
+        </div>
+      )}
     </div>
   );
 }
